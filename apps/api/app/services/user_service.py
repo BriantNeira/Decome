@@ -58,3 +58,10 @@ async def deactivate_user(db: AsyncSession, user_id: uuid.UUID) -> User:
     user = await get_user(db, user_id)
     user.is_active = False
     return user
+
+
+async def delete_user(db: AsyncSession, user_id: uuid.UUID) -> User:
+    user = await get_user(db, user_id)
+    await db.delete(user)
+    await db.flush()
+    return user

@@ -5,26 +5,34 @@
 /* ── Day theme (default) ─────────────────────────────────────── */
 :root,
 [data-theme="day"] {
-  --color-bg: #faf9f7;
+  --color-bg: #f4f6f3;
   --color-surface: #ffffff;
-  --color-text: #1c1d1d;
-  --color-text-secondary: #5e6060;
-  --color-border: #e7e5e4;
-  --color-accent: #94aa20;
-  --color-action: #2563eb;
-  --color-action-hover: #1d4ed8;
+  --color-text: #111a0e;
+  --color-text-secondary: #64746a;
+  --color-border: #dde5d9;
+  --color-accent: #5a7a30;
+  --color-action: #3d6b20;
+  --color-action-hover: #2e5218;
+  --color-sidebar: #1e2a18;
+  --color-sidebar-text: #c8d9b8;
+  --color-sidebar-active: #6dae3f;
+  --color-sidebar-hover: rgba(109,174,63,0.12);
 }
 
 /* ── Night theme ─────────────────────────────────────────────── */
 [data-theme="night"] {
-  --color-bg: #0b1220;
-  --color-surface: #111a2e;
-  --color-text: #f3f4f6;
-  --color-text-secondary: #cbd5e1;
-  --color-border: #22304a;
-  --color-accent: #b3c270;
-  --color-action: #60a5fa;
-  --color-action-hover: #3b82f6;
+  --color-bg: #0d1109;
+  --color-surface: #141f0e;
+  --color-text: #e8f0e0;
+  --color-text-secondary: #8aaa72;
+  --color-border: #253018;
+  --color-accent: #7ab648;
+  --color-action: #7ab648;
+  --color-action-hover: #6aa23a;
+  --color-sidebar: #0a1007;
+  --color-sidebar-text: #8aaa72;
+  --color-sidebar-active: #7ab648;
+  --color-sidebar-hover: rgba(122,182,72,0.12);
 }
 
 /* ── Base styles ─────────────────────────────────────────────── */
@@ -52,13 +60,13 @@ a,
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-bg);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--color-border);
-  border-radius: 3px;
+  border-radius: 99px;
 }

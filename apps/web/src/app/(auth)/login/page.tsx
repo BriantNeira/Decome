@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Card } from "@/components/ui/Card";
 import { login, storeToken } from "@/lib/auth";
+import { parseApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import { useBranding } from "@/hooks/useBranding";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const { showToast, ToastComponent } = useToast();
+  const { branding } = useBranding();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -24,32 +26,63 @@ export default function LoginPage() {
     try {
       const result = await login({ email, password });
       if (result.requires_2fa && result.temp_token) {
-        // Store temp token and redirect to 2FA page
         sessionStorage.setItem("decome_temp_token", result.temp_token);
         router.push("/login/2fa");
       } else if (result.access_token) {
         storeToken(result.access_token);
-        // Also set cookie for middleware
         document.cookie = `decome_token=${result.access_token}; path=/; SameSite=Lax`;
         router.push("/dashboard");
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail ?? "Login failed. Please try again.");
+      setError(parseApiError(err, "Login failed. Please try again."));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-text-primary">Welcome back</h1>
-          <p className="text-text-secondary mt-1 text-sm">Sign in to your account</p>
+    <div className="min-h-screen bg-bg flex">
+      {/* Left decorative panel */}
+      <div className="hidden lg:flex flex-col justify-between w-2/5 bg-sidebar p-12">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-sidebar-active flex items-center justify-center flex-shrink-0">
+            <span className="text-white text-sm font-bold leading-none">D</span>
+          </div>
+          <span className="text-white font-semibold tracking-wide">DecoMe</span>
+        </div>
+        <div>
+          <p className="text-white/40 text-xs uppercase tracking-widest mb-3">Platform</p>
+          <h2 className="text-white text-3xl font-semibold leading-snug">
+            BDM Reminder &<br />AI Communications
+          </h2>
+          <p className="text-white/50 mt-4 text-sm leading-relaxed">
+            Manage your team, automate outreach, and<br />stay on top of every business opportunity.
+          </p>
+        </div>
+        <p className="text-white/25 text-xs">&copy; {new Date().getFullYear()} DecoMe</p>
+      </div>
+
+      {/* Right — form */}
+      <div className="flex flex-1 flex-col items-center justify-center p-6 sm:p-10">
+        {/* Mobile logo */}
+        <div className="lg:hidden flex flex-col items-center mb-8">
+          {branding.logo_light_url ? (
+            <img src={branding.logo_light_url} alt="Logo" className="h-10 w-auto mb-3" />
+          ) : (
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-action flex items-center justify-center">
+                <span className="text-white text-sm font-bold">D</span>
+              </div>
+              <span className="text-text-primary font-semibold text-lg">DecoMe</span>
+            </div>
+          )}
         </div>
 
-        <Card>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="w-full max-w-sm">
+          <h1 className="text-2xl font-semibold text-text-primary mb-1">Sign in</h1>
+          <p className="text-text-secondary text-sm mb-8">Enter your credentials to access your account.</p>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <Input
               label="Email"
               type="email"
@@ -59,32 +92,34 @@ export default function LoginPage() {
               required
               autoComplete="email"
             />
-            <Input
-              label="Password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
+            <div>
+              <Input
+                label="Password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+              <div className="mt-1.5 text-right">
+                <Link href="/password-reset" className="text-xs text-text-secondary hover:text-action transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
 
             {error && (
-              <p className="text-sm text-red-500 text-center">{error}</p>
+              <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
             )}
 
-            <Button type="submit" loading={loading} className="w-full mt-2">
+            <Button type="submit" loading={loading} className="w-full">
               Sign in
             </Button>
-
-            <div className="text-center">
-              <Link href="/password-reset" className="text-sm text-action hover:underline">
-                Forgot your password?
-              </Link>
-            </div>
           </form>
-        </Card>
+        </div>
       </div>
+
       <ToastComponent />
     </div>
   );

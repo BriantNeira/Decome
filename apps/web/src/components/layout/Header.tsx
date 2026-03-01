@@ -18,8 +18,6 @@ export function Header({ title }: HeaderProps) {
     : branding.logo_light_url;
 
   // Sync favicon with branding config.
-  // Remove-and-recreate the <link> element to force browser to re-fetch
-  // (browsers cache favicons and ignore simple href mutations).
   useEffect(() => {
     const existing = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
     if (existing) existing.remove();
@@ -31,23 +29,21 @@ export function Header({ title }: HeaderProps) {
   }, [branding.favicon_url]);
 
   return (
-    <header className="h-16 border-b border-border bg-surface flex items-center px-6 gap-4">
-      {/* Logo — mobile only (sidebar has it on desktop) */}
-      <div className="md:hidden">
+    <header className="h-14 border-b border-border bg-surface/80 backdrop-blur-sm flex items-center px-6 gap-4 sticky top-0 z-30">
+      {/* Logo — mobile only */}
+      <div className="md:hidden flex items-center gap-2">
         {logoUrl ? (
-          <img src={logoUrl} alt="Logo" className="h-8 w-auto" />
+          <img src={logoUrl} alt="Logo" className="h-7 w-auto" />
         ) : (
-          <span className="font-semibold text-text-primary">DecoMe</span>
+          <span className="font-semibold text-sm text-text-primary">DecoMe</span>
         )}
       </div>
 
-      {/* Page title */}
       {title && (
-        <h1 className="flex-1 text-base font-semibold text-text-primary hidden md:block">{title}</h1>
+        <h1 className="flex-1 text-sm font-semibold text-text-primary hidden md:block tracking-wide">{title}</h1>
       )}
       <div className="flex-1 md:hidden" />
 
-      {/* Actions */}
       <div className="flex items-center gap-2">
         <ThemeToggle />
       </div>

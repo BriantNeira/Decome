@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { RoleGuard } from "@/components/layout/RoleGuard";
-import api from "@/lib/api";
+import api, { parseApiError } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@/types/auth";
 
 export default function UsersPage() {
@@ -19,6 +20,7 @@ export default function UsersPage() {
 
 function UsersContent() {
   const { showToast, ToastComponent } = useToast();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -31,6 +33,10 @@ function UsersContent() {
   const [newRole, setNewRole] = useState<"admin" | "bdm" | "director">("bdm");
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
+
+  // Delete confirmation
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   async function loadUsers() {
     setLoading(true);
@@ -62,7 +68,7 @@ function UsersContent() {
       setNewEmail(""); setNewName(""); setNewPassword(""); setNewRole("bdm");
       loadUsers();
     } catch (err: any) {
-      setAddError(err.response?.data?.detail ?? "Failed to create user.");
+      setAddError(parseApiError(err, "Failed to create user."));
     } finally {
       setAddLoading(false);
     }
@@ -85,6 +91,21 @@ function UsersContent() {
       loadUsers();
     } catch {
       showToast("Failed to update role.", "error");
+    }
+  }
+
+  async function deleteUser(userId: string) {
+    setDeleteLoading(true);
+    try {
+      await api.delete(`/users/${userId}`);
+      showToast("User deleted.", "success");
+      setConfirmDeleteId(null);
+      loadUsers();
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to delete user."), "error");
+      setConfirmDeleteId(null);
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
@@ -149,43 +170,84 @@ function UsersContent() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
-                  <tr key={user.id} className="border-b border-border last:border-0 hover:bg-bg transition-colors">
-                    <td className="py-3 px-4 font-medium text-text-primary">{user.full_name}</td>
-                    <td className="py-3 px-4 text-text-secondary">{user.email}</td>
-                    <td className="py-3 px-4">
-                      <select
-                        value={user.role}
-                        onChange={(e) => changeRole(user, e.target.value)}
-                        className="rounded border border-border bg-surface text-text-primary px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-action"
-                      >
-                        <option value="bdm">BDM</option>
-                        <option value="admin">Admin</option>
-                        <option value="director">Director</option>
-                      </select>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                        user.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                      }`}>
-                        {user.is_active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-xs text-text-secondary">
-                      {user.totp_enabled ? "✓ On" : "—"}
-                    </td>
-                    <td className="py-3 px-4">
-                      <Button
-                        variant={user.is_active ? "danger" : "secondary"}
-                        size="sm"
-                        onClick={() => toggleActive(user)}
-                        className="text-xs"
-                      >
-                        {user.is_active ? "Deactivate" : "Activate"}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {users.map((user) => {
+                  const isSelf = user.id === currentUser?.id;
+                  const isConfirming = confirmDeleteId === user.id;
+
+                  return (
+                    <tr key={user.id} className={`border-b border-border last:border-0 transition-colors ${isConfirming ? "bg-red-50" : "hover:bg-bg"}`}>
+                      <td className="py-3 px-4 font-medium text-text-primary">{user.full_name}</td>
+                      <td className="py-3 px-4 text-text-secondary">{user.email}</td>
+                      <td className="py-3 px-4">
+                        <select
+                          value={user.role}
+                          onChange={(e) => changeRole(user, e.target.value)}
+                          disabled={isSelf}
+                          className="rounded border border-border bg-surface text-text-primary px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-action disabled:opacity-50"
+                        >
+                          <option value="bdm">BDM</option>
+                          <option value="admin">Admin</option>
+                          <option value="director">Director</option>
+                        </select>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          user.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                        }`}>
+                          {user.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-xs text-text-secondary">
+                        {user.totp_enabled ? "✓ On" : "—"}
+                      </td>
+                      <td className="py-3 px-4">
+                        {isConfirming ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-red-600 font-medium whitespace-nowrap">Delete?</span>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              loading={deleteLoading}
+                              onClick={() => deleteUser(user.id)}
+                              className="text-xs h-7 px-2"
+                            >
+                              Yes
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="text-xs h-7 px-2"
+                            >
+                              No
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant={user.is_active ? "danger" : "secondary"}
+                              size="sm"
+                              onClick={() => toggleActive(user)}
+                              disabled={isSelf}
+                              className="text-xs"
+                            >
+                              {user.is_active ? "Deactivate" : "Activate"}
+                            </Button>
+                            {!isSelf && (
+                              <button
+                                onClick={() => setConfirmDeleteId(user.id)}
+                                className="text-xs text-text-secondary hover:text-red-500 transition-colors px-1 py-1"
+                                title="Delete user"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

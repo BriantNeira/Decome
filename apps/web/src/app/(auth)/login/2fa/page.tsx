@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { verify2fa, storeToken } from "@/lib/auth";
+import { parseApiError } from "@/lib/api";
 
 export default function TwoFAPage() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function TwoFAPage() {
       document.cookie = `decome_token=${token}; path=/; SameSite=Lax`;
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.response?.data?.detail ?? "Invalid code. Try again.");
+      setError(parseApiError(err, "Invalid code. Try again."));
       setCode("");
     } finally {
       setLoading(false);

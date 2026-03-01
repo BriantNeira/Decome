@@ -1,17 +1,19 @@
+import re
 from typing import Annotated
 
-from email_validator import EmailNotValidError, validate_email
 from pydantic import AfterValidator
 
+# RFC-5321 local part + any domain including .local / reserved TLDs
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", re.IGNORECASE)
 
-def _validate_email_no_deliver(v: str) -> str:
-    """Validate email syntax without checking deliverability (allows .local, etc.)."""
-    try:
-        info = validate_email(v, check_deliverability=False)
-        return info.normalized
-    except EmailNotValidError as exc:
-        raise ValueError(str(exc)) from exc
+
+def _validate_local_email(v: str) -> str:
+    """Validate email syntax with a permissive regex (allows .local, internal TLDs, etc.)."""
+    v = v.strip().lower()
+    if not _EMAIL_RE.match(v):
+        raise ValueError("Enter a valid email address.")
+    return v
 
 
 # Use this instead of EmailStr wherever .local / non-public TLDs must be accepted.
-LocalEmail = Annotated[str, AfterValidator(_validate_email_no_deliver)]
+LocalEmail = Annotated[str, AfterValidator(_validate_local_email)]

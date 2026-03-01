@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -96,21 +96,27 @@ async def update_user(
 
 
 @router.delete("/{user_id}")
-async def deactivate_user(
+async def delete_user(
     user_id: uuid.UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles("admin")),
 ):
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="You cannot delete your own account.",
+        )
     ip, ua = _client_info(request)
-    user = await user_service.deactivate_user(db, user_id)
+    user = await user_service.delete_user(db, user_id)
     await audit_service.log_action(
         db,
-        action="USER_DEACTIVATED",
+        action="USER_DELETED",
         user_id=current_user.id,
         resource_type="user",
         resource_id=str(user_id),
+        details={"email": user.email},
         ip_address=ip,
         user_agent=ua,
     )
-    return {"message": f"User {user.email} deactivated."}
+    return {"message": f"User {user.email} deleted."}

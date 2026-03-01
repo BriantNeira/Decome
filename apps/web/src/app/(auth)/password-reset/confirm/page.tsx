@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
-import api from "@/lib/api";
+import api, { parseApiError } from "@/lib/api";
 
 export default function PasswordResetConfirmPage() {
   const router = useRouter();
@@ -28,7 +28,7 @@ export default function PasswordResetConfirmPage() {
       await api.post("/auth/password-reset/confirm", { token, new_password: password });
       setDone(true);
     } catch (err: any) {
-      setError(err.response?.data?.detail ?? "Reset failed. The link may have expired.");
+      setError(parseApiError(err, "Reset failed. The link may have expired."));
     } finally {
       setLoading(false);
     }

@@ -34,4 +34,18 @@ api.interceptors.response.use(
   }
 );
 
+/** Normalize FastAPI error responses to a plain string.
+ *  - HTTPException: detail is a string → use as-is
+ *  - Pydantic 422: detail is an array of {msg, ...} → join .msg fields
+ */
+export function parseApiError(err: any, fallback = "An error occurred."): string {
+  const detail = err?.response?.data?.detail;
+  if (!detail) return fallback;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((d: any) => (typeof d?.msg === "string" ? d.msg : String(d))).join("; ");
+  }
+  return fallback;
+}
+
 export default api;
