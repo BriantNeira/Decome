@@ -26,6 +26,7 @@ export async function logout(): Promise<void> {
   } finally {
     if (typeof window !== "undefined") {
       localStorage.removeItem(TOKEN_KEY);
+      document.cookie = "decome_token=; path=/; max-age=0; SameSite=Lax";
     }
   }
 }

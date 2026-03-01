@@ -28,7 +28,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} font-sans bg-bg text-text-primary min-h-screen`}>
+      <body className={`${inter.variable} font-sans bg-bg text-text-primary min-h-screen`} suppressHydrationWarning>
         {children}
       </body>
     </html>

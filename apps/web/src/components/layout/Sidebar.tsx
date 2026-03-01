@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 
 const NAV_ITEMS = [
@@ -13,7 +13,13 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth();
+
+  async function handleLogout() {
+    await logout();
+    router.push("/login");
+  }
 
   const visibleItems = NAV_ITEMS.filter((item) => user && item.roles.includes(user.role));
 
@@ -51,7 +57,7 @@ export function Sidebar() {
           <p className="text-xs text-text-secondary truncate capitalize">{user?.role}</p>
         </div>
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
         >
           <span>↩</span> Sign out
