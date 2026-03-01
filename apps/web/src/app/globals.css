@@ -13,9 +13,9 @@
   --color-accent: #9AAE2F;
   --color-action: #9AAE2F;
   --color-action-hover: #7a8c25;
-  --color-sidebar: #1a2314;
-  --color-sidebar-text: #b8ceaa;
-  --color-sidebar-active: #9AAE2F;
+  --color-sidebar: #9AAE2F;
+  --color-sidebar-text: #1a2a0e;
+  --color-sidebar-active: #ffffff;
   --color-nav-underline: #606e1a;
 }
 
@@ -29,9 +29,9 @@
   --color-accent: #9AAE2F;
   --color-action: #9AAE2F;
   --color-action-hover: #7a8c25;
-  --color-sidebar: #0d150a;
-  --color-sidebar-text: #8aaa72;
-  --color-sidebar-active: #9AAE2F;
+  --color-sidebar: #9AAE2F;
+  --color-sidebar-text: #1a2a0e;
+  --color-sidebar-active: #ffffff;
   --color-nav-underline: #606e1a;
 }
 
