@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Day theme (default) ─────────────────────────────────────── */
+:root,
+[data-theme="day"] {
+  --color-bg: #faf9f7;
+  --color-surface: #ffffff;
+  --color-text: #1c1d1d;
+  --color-text-secondary: #5e6060;
+  --color-border: #e7e5e4;
+  --color-accent: #94aa20;
+  --color-action: #2563eb;
+  --color-action-hover: #1d4ed8;
+}
+
+/* ── Night theme ─────────────────────────────────────────────── */
+[data-theme="night"] {
+  --color-bg: #0b1220;
+  --color-surface: #111a2e;
+  --color-text: #f3f4f6;
+  --color-text-secondary: #cbd5e1;
+  --color-border: #22304a;
+  --color-accent: #b3c270;
+  --color-action: #60a5fa;
+  --color-action-hover: #3b82f6;
+}
+
+/* ── Base styles ─────────────────────────────────────────────── */
+html,
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Minimum touch targets */
+button,
+a,
+[role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Focus visible ring */
+:focus-visible {
+  outline: 2px solid var(--color-action);
+  outline-offset: 2px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}

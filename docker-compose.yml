@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: decome-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: decome
+      POSTGRES_PASSWORD: decome_dev_pass
+      POSTGRES_DB: decome
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U decome"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: decome-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: decome-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://decome:decome_dev_pass@db:5432/decome
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-key-change-in-production-must-be-32chars
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRY_MINUTES: "60"
+      CORS_ORIGINS: http://localhost:3000
+      UPLOAD_DIR: /app/uploads
+      ENVIRONMENT: development
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/api:/app
+      - api_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             python -m app.seed &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app"
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: decome-web
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - api
+    command: npm run dev
+
+volumes:
+  pgdata:
+  api_uploads:
