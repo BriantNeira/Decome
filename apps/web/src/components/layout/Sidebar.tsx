@@ -31,7 +31,7 @@ function NavLink({ href, label, pathname }: { href: string; label: string; pathn
       className={`
         relative flex items-center px-3 py-2.5 rounded-lg text-sm font-medium
         transition-all duration-150 group
-        ${active ? "text-white" : "text-sidebar-text hover:text-white"}
+        ${active ? "text-sidebar-active" : "text-sidebar-text hover:text-sidebar-active"}
       `}
     >
       {active && <span className="absolute inset-0 rounded-lg bg-sidebar-active/20" />}
@@ -86,10 +86,10 @@ export function Sidebar() {
           <img src={logoUrl} alt="Logo" className="h-7 w-auto max-w-[140px] object-contain" />
         ) : (
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-black/20 flex items-center justify-center flex-shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-sidebar-active flex items-center justify-center flex-shrink-0">
               <span className="text-white text-xs font-bold leading-none">D</span>
             </div>
-            <span className="font-semibold text-black/70 tracking-wide text-sm">DecoMe</span>
+            <span className="font-semibold text-white tracking-wide text-sm">DecoMe</span>
           </div>
         )}
       </div>
@@ -104,7 +104,7 @@ export function Sidebar() {
           return (
             <div key={gi}>
               {group.label && (
-                <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-black/40 select-none">
+                <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/40 select-none">
                   {group.label}
                 </p>
               )}
@@ -121,7 +121,7 @@ export function Sidebar() {
       {/* Footer */}
       <div className="px-3 pb-5 space-y-0.5">
         <div className="px-3 py-2 mb-1">
-          <p className="text-xs font-semibold text-black/70 truncate">{user?.full_name}</p>
+          <p className="text-xs font-semibold text-white truncate">{user?.full_name}</p>
           <p className="text-xs text-sidebar-text truncate capitalize">{user?.role}</p>
         </div>
         <button
