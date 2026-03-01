@@ -10,15 +10,32 @@ const NAV_GROUPS = [
   {
     label: null,
     items: [
-      { href: "/dashboard",          label: "Dashboard", roles: ["admin", "bdm", "director"] },
-      { href: "/dashboard/settings", label: "Settings",  roles: ["admin", "bdm", "director"] },
+      { href: "/dashboard", label: "Dashboard", roles: ["admin", "bdm", "director"] },
     ],
   },
   {
-    label: "Administration",
+    label: "My Work",
     items: [
-      { href: "/dashboard/admin/users",    label: "Users",    roles: ["admin"] },
-      { href: "/dashboard/admin/branding", label: "Branding", roles: ["admin"] },
+      { href: "/dashboard/my-assignments", label: "My Assignments", roles: ["bdm"] },
+    ],
+  },
+  {
+    label: "Management",
+    items: [
+      { href: "/dashboard/admin/accounts", label: "Accounts", roles: ["admin", "director"] },
+      { href: "/dashboard/admin/contacts", label: "Contacts", roles: ["admin", "bdm"] },
+      { href: "/dashboard/admin/programs", label: "Programs", roles: ["admin"] },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { href: "/dashboard/admin/users",          label: "Users",          roles: ["admin"] },
+      { href: "/dashboard/admin/assignments",    label: "Assignments",    roles: ["admin"] },
+      { href: "/dashboard/admin/reminder-types", label: "Reminder Types", roles: ["admin"] },
+      { href: "/dashboard/admin/custom-fields",  label: "Custom Fields",  roles: ["admin"] },
+      { href: "/dashboard/admin/branding",       label: "Branding",       roles: ["admin"] },
+      { href: "/dashboard/settings",             label: "My Settings",   roles: ["admin", "bdm", "director"] },
     ],
   },
 ];
@@ -80,18 +97,18 @@ export function Sidebar() {
 
   return (
     <aside className="hidden md:flex flex-col w-60 min-h-screen bg-sidebar">
-      {/* Logo */}
+      {/* Logo — always show badge/logo + "Deminder" name */}
       <div className="flex items-center h-16 px-6">
-        {logoUrl ? (
-          <img src={logoUrl} alt="Logo" className="h-7 w-auto max-w-[140px] object-contain" />
-        ) : (
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5">
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="h-7 w-auto max-w-[32px] object-contain flex-shrink-0" />
+          ) : (
             <div className="w-7 h-7 rounded-lg bg-sidebar-active flex items-center justify-center flex-shrink-0">
               <span className="text-white text-xs font-bold leading-none">D</span>
             </div>
-            <span className="font-semibold text-sidebar-text tracking-wide text-sm">DecoMe</span>
-          </div>
-        )}
+          )}
+          <span className="font-semibold text-sidebar-text tracking-wide text-sm">Deminder</span>
+        </div>
       </div>
 
       {/* Nav groups */}
