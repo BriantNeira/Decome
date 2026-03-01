@@ -10,13 +10,13 @@
   --color-text: #111a0e;
   --color-text-secondary: #64746a;
   --color-border: #dde5d9;
-  --color-accent: #8dc63f;
-  --color-action: #8dc63f;
-  --color-action-hover: #6aa831;
+  --color-accent: #9AAE2F;
+  --color-action: #9AAE2F;
+  --color-action-hover: #7a8c25;
   --color-sidebar: #1a2314;
   --color-sidebar-text: #b8ceaa;
-  --color-sidebar-active: #8dc63f;
-  --color-nav-underline: #5a8a1a;
+  --color-sidebar-active: #9AAE2F;
+  --color-nav-underline: #606e1a;
 }
 
 /* ── Night theme ─────────────────────────────────────────────── */
@@ -26,13 +26,13 @@
   --color-text: #e8f0e0;
   --color-text-secondary: #8aaa72;
   --color-border: #253018;
-  --color-accent: #8dc63f;
-  --color-action: #8dc63f;
-  --color-action-hover: #6aa831;
+  --color-accent: #9AAE2F;
+  --color-action: #9AAE2F;
+  --color-action-hover: #7a8c25;
   --color-sidebar: #0d150a;
   --color-sidebar-text: #8aaa72;
-  --color-sidebar-active: #8dc63f;
-  --color-nav-underline: #5a8a1a;
+  --color-sidebar-active: #9AAE2F;
+  --color-nav-underline: #606e1a;
 }
 
 /* ── Base styles ─────────────────────────────────────────────── */
