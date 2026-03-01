@@ -46,15 +46,13 @@ export default function LoginPage() {
       <div className="hidden lg:flex flex-col justify-between w-2/5 bg-sidebar p-12">
         <div className="flex items-center gap-3">
           {branding.logo_light_url ? (
-            <img src={branding.logo_light_url} alt="Logo" className="h-10 w-auto" />
+            <img src={branding.logo_light_url} alt="Logo" className="h-9 w-auto max-w-[36px] object-contain flex-shrink-0" />
           ) : (
-            <>
-              <div className="w-8 h-8 rounded-lg bg-sidebar-active flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-sm font-bold leading-none">W</span>
-              </div>
-              <span className="text-sidebar-text font-semibold tracking-wide">Deminder</span>
-            </>
+            <div className="w-8 h-8 rounded-lg bg-sidebar-active flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-sm font-bold leading-none">W</span>
+            </div>
           )}
+          <span className="text-sidebar-text font-semibold tracking-wide">Deminder</span>
         </div>
         <div>
           <p className="text-sidebar-text/60 text-xs uppercase tracking-widest mb-3">Platform</p>
@@ -72,16 +70,16 @@ export default function LoginPage() {
       <div className="flex flex-1 flex-col items-center justify-center p-6 sm:p-10">
         {/* Logo — visible on mobile only (desktop shows it on left panel) */}
         <div className="lg:hidden flex flex-col items-center mb-8">
-          {branding.logo_light_url ? (
-            <img src={branding.logo_light_url} alt="Logo" className="h-10 w-auto mb-3" />
-          ) : (
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-action flex items-center justify-center">
+          <div className="flex items-center gap-2 mb-3">
+            {branding.logo_light_url ? (
+              <img src={branding.logo_light_url} alt="Logo" className="h-9 w-auto max-w-[36px] object-contain flex-shrink-0" />
+            ) : (
+              <div className="w-8 h-8 rounded-lg bg-action flex items-center justify-center flex-shrink-0">
                 <span className="text-white text-sm font-bold">W</span>
               </div>
-              <span className="text-text-primary font-semibold text-lg">Deminder</span>
-            </div>
-          )}
+            )}
+            <span className="text-text-primary font-semibold text-lg">Deminder</span>
+          </div>
         </div>
 
         <div className="w-full max-w-sm">
