@@ -132,41 +132,54 @@ function ContactDetailContent() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.push("/dashboard/admin/contacts")}
-            className="text-text-secondary hover:text-text-primary transition-colors text-sm"
-          >
-            &larr; Contacts
-          </button>
-          <div>
-            <h1 className="text-2xl font-semibold text-text-primary">{formatName(contact)}</h1>
-            <div className="flex items-center gap-3 mt-1">
-              {contact.account_name && (
-                <button
-                  onClick={() => router.push(`/dashboard/admin/accounts`)}
-                  className="text-sm text-brand hover:underline"
-                >
-                  {contact.account_name}
-                </button>
-              )}
+    <div className="space-y-4">
+      {/* Back link */}
+      <button
+        onClick={() => router.push("/dashboard/admin/contacts")}
+        className="text-text-secondary hover:text-text-primary transition-colors text-sm"
+      >
+        &larr; Contacts
+      </button>
+
+      {/* ERP Header Card */}
+      <Card padding="md">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            {/* Account name — breadcrumb style */}
+            {contact.account_name && (
+              <button
+                onClick={() => router.push(`/dashboard/admin/accounts/${contact.account_id}`)}
+                className="text-sm text-brand hover:underline font-medium mb-1 block"
+              >
+                {contact.account_name}
+              </button>
+            )}
+            {/* Contact name */}
+            <h1 className="text-2xl font-bold text-text-primary">{formatName(contact)}</h1>
+            {/* Badges */}
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               {contact.is_decision_maker && (
-                <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
                   Decision Maker
                 </span>
               )}
+              {contact.email && (
+                <a href={`mailto:${contact.email}`} className="text-sm text-text-secondary hover:text-brand transition-colors">
+                  {contact.email}
+                </a>
+              )}
+              {contact.phone && (
+                <span className="text-sm text-text-secondary">{contact.phone}</span>
+              )}
             </div>
           </div>
+          {!editing && (
+            <Button onClick={startEdit} variant="primary" size="sm">
+              Edit Contact
+            </Button>
+          )}
         </div>
-        {!editing && (
-          <Button onClick={startEdit} variant="primary" size="sm">
-            Edit Contact
-          </Button>
-        )}
-      </div>
+      </Card>
 
       {editing ? (
         /* Edit Form */
@@ -185,9 +198,7 @@ function ContactDetailContent() {
                 >
                   <option value="">--</option>
                   {TITLE_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
+                    <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
               </div>
@@ -228,7 +239,6 @@ function ContactDetailContent() {
               />
               Decision Maker
             </label>
-            {/* Programs multi-select */}
             {programs.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1">Programs</label>
@@ -275,62 +285,48 @@ function ContactDetailContent() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
               <div>
-                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">
-                  Title
-                </p>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">Title</p>
                 <p className="text-sm text-text-primary">{contact.title || "---"}</p>
               </div>
               <div>
-                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">
-                  Full Name
-                </p>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">Full Name</p>
                 <p className="text-sm text-text-primary">
                   {[contact.first_name, contact.last_name].filter(Boolean).join(" ") || "---"}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">
-                  Email
-                </p>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">Email</p>
                 <p className="text-sm text-text-primary">
                   {contact.email ? (
-                    <a
-                      href={`mailto:${contact.email}`}
-                      className="text-brand hover:underline"
-                    >
+                    <a href={`mailto:${contact.email}`} className="text-brand hover:underline">
                       {contact.email}
                     </a>
-                  ) : (
-                    "---"
-                  )}
+                  ) : "---"}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">
-                  Phone
-                </p>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">Phone</p>
                 <p className="text-sm text-text-primary">{contact.phone || "---"}</p>
               </div>
               <div>
-                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">
-                  Account
-                </p>
-                <p className="text-sm text-text-primary">
-                  {contact.account_name || "---"}
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">Account</p>
+                <p className="text-sm">
+                  {contact.account_name ? (
+                    <button
+                      onClick={() => router.push(`/dashboard/admin/accounts/${contact.account_id}`)}
+                      className="text-brand hover:underline"
+                    >
+                      {contact.account_name}
+                    </button>
+                  ) : "---"}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">
-                  Decision Maker
-                </p>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">Decision Maker</p>
                 <p className="text-sm text-text-primary">
                   {contact.is_decision_maker ? (
-                    <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                      Yes
-                    </span>
-                  ) : (
-                    "No"
-                  )}
+                    <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Yes</span>
+                  ) : "No"}
                 </p>
               </div>
             </div>

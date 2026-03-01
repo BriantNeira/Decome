@@ -153,3 +153,71 @@ async def test_delete_assignment(client: AsyncClient, admin_token: str, bdm_user
     # Verify deletion
     res2 = await client.get(f"/api/assignments/{assignment.id}", headers={"Authorization": f"Bearer {admin_token}"})
     assert res2.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_assignment_account_and_program(
+    client: AsyncClient, admin_token: str, bdm_user: User, db: AsyncSession
+):
+    """Admin can update both account and program on an existing assignment"""
+    account1 = await create_test_account(db)
+    account2 = await create_test_account(db)
+    program1 = await create_test_program(db)
+    program2 = await create_test_program(db)
+
+    assignment = Assignment(user_id=bdm_user.id, account_id=account1.id, program_id=program1.id)
+    db.add(assignment)
+    await db.commit()
+    await db.refresh(assignment)
+
+    payload = {"account_id": str(account2.id), "program_id": str(program2.id)}
+    res = await client.patch(
+        f"/api/assignments/{assignment.id}", json=payload,
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["account_id"] == str(account2.id)
+    assert data["program_id"] == str(program2.id)
+
+
+@pytest.mark.asyncio
+async def test_inactive_assignments_hidden_from_bdm(
+    client: AsyncClient, bdm_token: str, admin_token: str, bdm_user: User, db: AsyncSession
+):
+    """BDM my-assignments only returns active assignments; inactive ones are hidden"""
+    account = await create_test_account(db)
+    program = await create_test_program(db)
+
+    # Create an INACTIVE assignment for this BDM
+    assignment = Assignment(user_id=bdm_user.id, account_id=account.id, program_id=program.id, is_active=False)
+    db.add(assignment)
+    await db.commit()
+    await db.refresh(assignment)
+
+    res = await client.get("/api/assignments/my", headers={"Authorization": f"Bearer {bdm_token}"})
+    assert res.status_code == 200
+    items = res.json()["items"]
+    # The inactive assignment must NOT appear in BDM's my-assignments
+    assignment_ids = [item["id"] for item in items]
+    assert str(assignment.id) not in assignment_ids
+
+
+@pytest.mark.asyncio
+async def test_active_assignment_visible_to_bdm(
+    client: AsyncClient, bdm_token: str, bdm_user: User, db: AsyncSession
+):
+    """BDM sees an assignment when it is active"""
+    account = await create_test_account(db)
+    program = await create_test_program(db)
+
+    assignment = Assignment(user_id=bdm_user.id, account_id=account.id, program_id=program.id, is_active=True)
+    db.add(assignment)
+    await db.commit()
+    await db.refresh(assignment)
+
+    res = await client.get("/api/assignments/my", headers={"Authorization": f"Bearer {bdm_token}"})
+    assert res.status_code == 200
+    items = res.json()["items"]
+    assignment_ids = [item["id"] for item in items]
+    assert str(assignment.id) in assignment_ids

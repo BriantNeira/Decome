@@ -165,14 +165,9 @@ function AssignmentsContent() {
   const selectClass =
     "w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sidebar-active";
 
-  // Filter programs by selected account (show programs for that account + programs with no account)
-  const filteredPrograms = formData.account_id
-    ? programs.filter((p) => !p.account_id || p.account_id === formData.account_id)
-    : programs;
-
-  const editFilteredPrograms = editData.account_id
-    ? programs.filter((p) => !p.account_id || p.account_id === editData.account_id)
-    : programs;
+  // Show all programs regardless of account selected
+  const filteredPrograms = programs;
+  const editFilteredPrograms = programs;
 
   return (
     <div className="space-y-6">

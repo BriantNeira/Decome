@@ -18,6 +18,8 @@ import {
   CustomFieldValue,
 } from "@/types/masterdata";
 
+type Tab = "overview" | "logo" | "notes" | "contacts" | "custom-fields";
+
 function AccountDetailContent() {
   const params = useParams();
   const router = useRouter();
@@ -25,7 +27,7 @@ function AccountDetailContent() {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "logo" | "notes">("overview");
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [account, setAccount] = useState<AccountDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -266,17 +268,27 @@ function AccountDetailContent() {
 
   const activeAssignments = account.assignments.filter((a) => a.is_active);
 
+  const TABS: { key: Tab; label: string }[] = [
+    { key: "overview", label: "Overview" },
+    { key: "logo", label: "Logo" },
+    { key: "notes", label: `Notes (${account.notes.length})` },
+    { key: "contacts", label: `Contacts (${account.contacts?.length ?? 0})` },
+    { key: "custom-fields", label: "Custom Fields" },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => router.push("/dashboard/admin/accounts")}
-          className="text-text-secondary hover:text-text-primary transition-colors text-sm"
-        >
-          &larr; Accounts
-        </button>
-        <div className="flex-1 flex items-center gap-4">
+    <div className="space-y-4">
+      {/* Back link */}
+      <button
+        onClick={() => router.push("/dashboard/admin/accounts")}
+        className="text-text-secondary hover:text-text-primary transition-colors text-sm"
+      >
+        &larr; Accounts
+      </button>
+
+      {/* ERP Header Card */}
+      <Card padding="md">
+        <div className="flex items-center gap-4">
           {account.logo_url && (
             <img
               src={account.logo_url}
@@ -284,15 +296,19 @@ function AccountDetailContent() {
               className="w-14 h-14 rounded-lg object-contain border border-border bg-surface flex-shrink-0"
             />
           )}
-          <div>
-            <h1 className="text-2xl font-semibold text-text-primary">{account.name}</h1>
-            <div className="flex items-center gap-3 mt-1">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold text-text-primary truncate">{account.name}</h1>
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
               {account.code && (
-                <span className="text-sm text-text-secondary font-mono">{account.code}</span>
+                <span className="text-sm text-text-secondary font-mono bg-bg px-2 py-0.5 rounded border border-border">
+                  {account.code}
+                </span>
               )}
               <span
-                className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                  account.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                  account.is_active
+                    ? "bg-green-100 text-green-800"
+                    : "bg-gray-100 text-gray-600"
                 }`}
               >
                 {account.is_active ? "Active" : "Inactive"}
@@ -300,21 +316,21 @@ function AccountDetailContent() {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Tab bar */}
-      <div className="flex border-b border-border">
-        {(["overview", "logo", "notes"] as const).map((tab) => (
+      <div className="flex border-b border-border overflow-x-auto">
+        {TABS.map(({ key, label }) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-5 py-2.5 text-sm font-medium capitalize border-b-2 -mb-px transition-colors ${
-              activeTab === tab
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`px-5 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
+              activeTab === key
                 ? "border-sidebar-active text-sidebar-active"
                 : "border-transparent text-text-secondary hover:text-text-primary"
             }`}
           >
-            {tab === "notes" ? `Notes (${account.notes.length})` : tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {label}
           </button>
         ))}
       </div>
@@ -322,7 +338,6 @@ function AccountDetailContent() {
       {/* Tab: Overview */}
       {activeTab === "overview" && (
         <div className="space-y-6">
-          {/* Description */}
           {account.description && (
             <Card padding="md">
               <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-2">
@@ -332,153 +347,34 @@ function AccountDetailContent() {
             </Card>
           )}
 
-          {/* Programs & BDMs (Assignments) */}
+          {/* Programs & BDMs */}
           <Card padding="md">
             <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-4">
               Programs &amp; BDMs ({activeAssignments.length})
             </h2>
-
             {activeAssignments.length === 0 ? (
               <p className="text-text-secondary text-sm">No assignments yet.</p>
             ) : (
               <div className="space-y-3">
                 {activeAssignments.map((a) => (
                   <div key={a.id} className="border border-border rounded-lg p-4 flex flex-wrap gap-6 items-start">
-                    {/* Program */}
                     <div className="min-w-[150px]">
-                      <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">
-                        Program
-                      </p>
+                      <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">Program</p>
                       {isAdmin ? (
-                        <Link
-                          href="/dashboard/admin/programs"
-                          className="text-sm font-medium text-sidebar-active hover:underline"
-                        >
+                        <Link href="/dashboard/admin/programs" className="text-sm font-medium text-sidebar-active hover:underline">
                           {a.program_name || "---"}
                         </Link>
                       ) : (
                         <p className="text-sm font-medium text-text-primary">{a.program_name || "---"}</p>
                       )}
                     </div>
-
-                    {/* BDM */}
                     <div className="min-w-[150px]">
-                      <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">
-                        BDM
-                      </p>
+                      <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">BDM</p>
                       <p className="text-sm text-text-primary">{a.bdm_name || "---"}</p>
-                      {a.bdm_email && (
-                        <p className="text-xs text-text-secondary">{a.bdm_email}</p>
-                      )}
+                      {a.bdm_email && <p className="text-xs text-text-secondary">{a.bdm_email}</p>}
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-          </Card>
-
-          {/* Contacts */}
-          <Card padding="md">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">
-                Contacts ({account.contacts?.length ?? 0})
-              </h2>
-              <Link
-                href={`/dashboard/admin/contacts?account_id=${accountId}`}
-                className="text-sm text-brand hover:underline font-medium"
-              >
-                Manage Contacts &rarr;
-              </Link>
-            </div>
-
-            {!account.contacts || account.contacts.length === 0 ? (
-              <p className="text-text-secondary text-sm">No contacts for this account.</p>
-            ) : (
-              <div className="space-y-2">
-                {account.contacts.map((c: ContactSummary) => (
-                  <div
-                    key={c.id}
-                    className="border border-border rounded-lg px-4 py-3 flex items-center justify-between hover:bg-bg transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <Link
-                          href={`/dashboard/admin/contacts/${c.id}`}
-                          className="text-sm font-medium text-brand hover:underline"
-                        >
-                          {formatContactName(c)}
-                        </Link>
-                        {c.email && (
-                          <p className="text-xs text-text-secondary">{c.email}</p>
-                        )}
-                      </div>
-                    </div>
-                    {c.is_decision_maker && (
-                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 shrink-0">
-                        DM
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          {/* Custom Fields */}
-          <Card padding="md">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">
-                Custom Fields
-              </h2>
-              {isAdmin && cfDefinitions.length > 0 && !editingCF && (
-                <button
-                  onClick={startEditCF}
-                  className="text-sm text-brand hover:underline font-medium"
-                >
-                  Edit Fields
-                </button>
-              )}
-            </div>
-
-            {cfDefinitions.length === 0 ? (
-              <p className="text-text-secondary text-sm">No custom fields defined.</p>
-            ) : editingCF ? (
-              <div className="space-y-3">
-                {cfDefinitions.map((def) => (
-                  <div key={def.id}>
-                    <label className="block text-sm font-medium text-text-primary mb-1">
-                      {def.field_name}
-                      {def.is_required && <span className="text-red-500 ml-1">*</span>}
-                    </label>
-                    {renderCFInput(def)}
-                  </div>
-                ))}
-                <div className="flex gap-2 pt-2">
-                  <Button onClick={handleSaveCF} loading={cfSaving} variant="primary" size="sm">
-                    Save Fields
-                  </Button>
-                  <Button onClick={() => setEditingCF(false)} variant="secondary" size="sm">
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {cfDefinitions.map((def) => {
-                  const val = cfValues[def.id];
-                  return (
-                    <div key={def.id} className="flex gap-2 text-sm">
-                      <span className="font-medium text-text-secondary min-w-[160px]">{def.field_name}:</span>
-                      <span className="text-text-primary">
-                        {val !== undefined && val !== "" ? (
-                          def.field_type === "boolean" ? (val === "true" ? "Yes" : "No") : val
-                        ) : (
-                          <span className="italic text-text-secondary">---</span>
-                        )}
-                      </span>
-                    </div>
-                  );
-                })}
               </div>
             )}
           </Card>
@@ -491,7 +387,6 @@ function AccountDetailContent() {
           <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-4">
             Account Logo
           </h2>
-
           {canManageLogo ? (
             account.logo_url ? (
               <div className="flex items-center gap-4">
@@ -502,12 +397,7 @@ function AccountDetailContent() {
                 />
                 <div className="space-y-2">
                   <div className="w-48">
-                    <FileUpload
-                      accept=".svg,.png"
-                      maxSizeMB={2}
-                      label="Replace logo"
-                      onFile={handleLogoUpload}
-                    />
+                    <FileUpload accept=".svg,.png" maxSizeMB={2} label="Replace logo" onFile={handleLogoUpload} />
                   </div>
                   <button
                     onClick={handleLogoDelete}
@@ -520,15 +410,8 @@ function AccountDetailContent() {
               </div>
             ) : (
               <div className="max-w-sm">
-                <FileUpload
-                  accept=".svg,.png"
-                  maxSizeMB={2}
-                  label="Upload logo"
-                  onFile={handleLogoUpload}
-                />
-                {logoUploading && (
-                  <p className="mt-2 text-xs text-text-secondary">Uploading...</p>
-                )}
+                <FileUpload accept=".svg,.png" maxSizeMB={2} label="Upload logo" onFile={handleLogoUpload} />
+                {logoUploading && <p className="mt-2 text-xs text-text-secondary">Uploading...</p>}
               </div>
             )
           ) : (
@@ -541,9 +424,7 @@ function AccountDetailContent() {
                 />
               ) : (
                 <div className="w-24 h-24 rounded-lg border border-border bg-surface flex items-center justify-center">
-                  <span className="text-text-secondary text-2xl font-bold">
-                    {account.name.charAt(0).toUpperCase()}
-                  </span>
+                  <span className="text-text-secondary text-2xl font-bold">{account.name.charAt(0).toUpperCase()}</span>
                 </div>
               )}
               <p className="text-sm text-text-secondary italic">
@@ -560,7 +441,6 @@ function AccountDetailContent() {
           <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-4">
             Notes ({account.notes.length})
           </h2>
-
           <div className="mb-4 space-y-2">
             <textarea
               value={noteContent}
@@ -573,7 +453,6 @@ function AccountDetailContent() {
               Add Note
             </Button>
           </div>
-
           {account.notes.length === 0 ? (
             <p className="text-text-secondary text-sm">No notes yet.</p>
           ) : (
@@ -582,27 +461,17 @@ function AccountDetailContent() {
                 const isOwner = note.user_id === currentUserId;
                 const canEdit = isOwner || isAdmin;
                 const isEditing = editingNote === note.id;
-
                 return (
                   <div key={note.id} className="border border-border rounded-lg p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="text-xs text-text-secondary">
-                        <span className="font-medium text-text-primary">
-                          {note.author_name || "Unknown"}
-                        </span>{" "}
+                        <span className="font-medium text-text-primary">{note.author_name || "Unknown"}</span>{" "}
                         &middot; {formatDate(note.created_at)}
-                        {note.updated_at !== note.created_at && (
-                          <span className="ml-1 italic">(edited)</span>
-                        )}
+                        {note.updated_at !== note.created_at && <span className="ml-1 italic">(edited)</span>}
                       </div>
                       {canEdit && !isEditing && (
                         <div className="flex gap-2 shrink-0">
-                          <button
-                            onClick={() => startEditNote(note)}
-                            className="text-xs text-brand hover:underline"
-                          >
-                            Edit
-                          </button>
+                          <button onClick={() => startEditNote(note)} className="text-xs text-brand hover:underline">Edit</button>
                           <button
                             onClick={() => handleDeleteNote(note.id)}
                             disabled={deletingNote === note.id}
@@ -613,7 +482,6 @@ function AccountDetailContent() {
                         </div>
                       )}
                     </div>
-
                     {isEditing ? (
                       <div className="mt-2 space-y-2">
                         <textarea
@@ -623,24 +491,110 @@ function AccountDetailContent() {
                           rows={3}
                         />
                         <div className="flex gap-2">
-                          <Button
-                            onClick={() => handleSaveEditNote(note.id)}
-                            loading={savingEdit}
-                            variant="primary"
-                            size="sm"
-                          >
-                            Save
-                          </Button>
-                          <Button onClick={cancelEditNote} variant="secondary" size="sm">
-                            Cancel
-                          </Button>
+                          <Button onClick={() => handleSaveEditNote(note.id)} loading={savingEdit} variant="primary" size="sm">Save</Button>
+                          <Button onClick={cancelEditNote} variant="secondary" size="sm">Cancel</Button>
                         </div>
                       </div>
                     ) : (
-                      <p className="mt-2 text-sm text-text-primary whitespace-pre-wrap">
-                        {note.content}
-                      </p>
+                      <p className="mt-2 text-sm text-text-primary whitespace-pre-wrap">{note.content}</p>
                     )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Tab: Contacts */}
+      {activeTab === "contacts" && (
+        <Card padding="md">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">
+              Contacts ({account.contacts?.length ?? 0})
+            </h2>
+            <Link
+              href={`/dashboard/admin/contacts?account_id=${accountId}`}
+              className="text-sm text-brand hover:underline font-medium"
+            >
+              Manage Contacts &rarr;
+            </Link>
+          </div>
+          {!account.contacts || account.contacts.length === 0 ? (
+            <p className="text-text-secondary text-sm">No contacts for this account.</p>
+          ) : (
+            <div className="space-y-2">
+              {account.contacts.map((c: ContactSummary) => (
+                <div
+                  key={c.id}
+                  className="border border-border rounded-lg px-4 py-3 flex items-center justify-between hover:bg-bg transition-colors"
+                >
+                  <div>
+                    <Link
+                      href={`/dashboard/admin/contacts/${c.id}`}
+                      className="text-sm font-medium text-brand hover:underline"
+                    >
+                      {formatContactName(c)}
+                    </Link>
+                    {c.email && <p className="text-xs text-text-secondary">{c.email}</p>}
+                  </div>
+                  {c.is_decision_maker && (
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 shrink-0">
+                      DM
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Tab: Custom Fields */}
+      {activeTab === "custom-fields" && (
+        <Card padding="md">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">
+              Custom Fields
+            </h2>
+            {isAdmin && cfDefinitions.length > 0 && !editingCF && (
+              <button onClick={startEditCF} className="text-sm text-brand hover:underline font-medium">
+                Edit Fields
+              </button>
+            )}
+          </div>
+          {cfDefinitions.length === 0 ? (
+            <p className="text-text-secondary text-sm">No custom fields defined.</p>
+          ) : editingCF ? (
+            <div className="space-y-3">
+              {cfDefinitions.map((def) => (
+                <div key={def.id}>
+                  <label className="block text-sm font-medium text-text-primary mb-1">
+                    {def.field_name}
+                    {def.is_required && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  {renderCFInput(def)}
+                </div>
+              ))}
+              <div className="flex gap-2 pt-2">
+                <Button onClick={handleSaveCF} loading={cfSaving} variant="primary" size="sm">Save Fields</Button>
+                <Button onClick={() => setEditingCF(false)} variant="secondary" size="sm">Cancel</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {cfDefinitions.map((def) => {
+                const val = cfValues[def.id];
+                return (
+                  <div key={def.id} className="flex gap-2 text-sm">
+                    <span className="font-medium text-text-secondary min-w-[160px]">{def.field_name}:</span>
+                    <span className="text-text-primary">
+                      {val !== undefined && val !== "" ? (
+                        def.field_type === "boolean" ? (val === "true" ? "Yes" : "No") : val
+                      ) : (
+                        <span className="italic text-text-secondary">---</span>
+                      )}
+                    </span>
                   </div>
                 );
               })}

@@ -18,6 +18,7 @@ interface AccountsListResponse {
   items: Account[];
   total: number;
 }
+
 function ProgramsContent() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -30,7 +31,7 @@ function ProgramsContent() {
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState({ name: "", description: "", is_active: true, account_id: "" });
+  const [editData, setEditData] = useState({ name: "", description: "", account_id: "" });
   const [editAccountSearch, setEditAccountSearch] = useState("");
   const [editAccountSelected, setEditAccountSelected] = useState(false);
 
@@ -71,7 +72,6 @@ function ProgramsContent() {
       showToast("Program name is required", "error");
       return;
     }
-
     setSubmitting(true);
     try {
       const payload: any = { name: formData.name, description: formData.description || null };
@@ -94,7 +94,6 @@ function ProgramsContent() {
     setEditData({
       name: program.name,
       description: program.description || "",
-      is_active: program.is_active,
       account_id: program.account_id ?? "",
     });
     const acctName = program.account_name ?? "";
@@ -108,7 +107,6 @@ function ProgramsContent() {
       const payload: any = {
         name: editData.name,
         description: editData.description || null,
-        is_active: editData.is_active,
       };
       if (editData.account_id) payload.account_id = editData.account_id;
       await api.patch(`/programs/${programId}`, payload);
@@ -143,8 +141,10 @@ function ProgramsContent() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-text-primary">Programs</h1>
-        <div className="text-sm text-text-secondary">Total: {total}</div>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-semibold text-text-primary">Programs</h1>
+          <span className="text-sm text-text-secondary">Total: {total}</span>
+        </div>
         <Button onClick={() => setShowAdd(!showAdd)} variant="primary">
           {showAdd ? "Cancel" : "+ Add Program"}
         </Button>
@@ -169,7 +169,6 @@ function ProgramsContent() {
                 placeholder="Optional description"
               />
             </div>
-            {/* Account dropdown with search */}
             <div>
               <label className="block text-sm font-medium text-text-primary mb-1">Account</label>
               <Input
@@ -238,8 +237,6 @@ function ProgramsContent() {
                 <tr className="border-b border-border">
                   <th className="text-left py-3 px-4 font-medium text-text-secondary">Name</th>
                   <th className="text-left py-3 px-4 font-medium text-text-secondary">Account</th>
-                  <th className="text-left py-3 px-4 font-medium text-text-secondary">Default</th>
-                  <th className="text-left py-3 px-4 font-medium text-text-secondary">Status</th>
                   <th className="text-left py-3 px-4 font-medium text-text-secondary">Actions</th>
                 </tr>
               </thead>
@@ -252,69 +249,52 @@ function ProgramsContent() {
                           <Input
                             value={editData.name}
                             onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                            disabled={program.is_default}
                           />
                         </td>
                         <td className="py-3 px-4">
-                          {program.is_default ? (
-                            <span className="text-text-secondary text-xs">N/A (default)</span>
-                          ) : (
-                            <div className="relative">
-                              <input
-                                value={editAccountSearch}
-                                onChange={(e) => {
-                                  setEditAccountSearch(e.target.value);
-                                  setEditData({ ...editData, account_id: "" });
-                                  setEditAccountSelected(false);
-                                }}
-                                placeholder="Search account…"
-                                className="w-full rounded border border-border bg-surface text-text-primary px-2 py-1 text-sm"
-                              />
-                              {editAccountSearch && !editAccountSelected && (
-                                <div className="absolute z-10 mt-0.5 w-full border border-border rounded bg-surface shadow-md max-h-36 overflow-y-auto">
-                                  {accounts
-                                    .filter((a) => a.name.toLowerCase().includes(editAccountSearch.toLowerCase()))
-                                    .map((a) => (
-                                      <button
-                                        key={a.id}
-                                        type="button"
-                                        onClick={() => {
-                                          setEditData({ ...editData, account_id: a.id });
-                                          setEditAccountSearch(a.name);
-                                          setEditAccountSelected(true);
-                                        }}
-                                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-bg text-text-primary"
-                                      >
-                                        {a.name}
-                                      </button>
-                                    ))}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setEditData({ ...editData, account_id: "" });
-                                      setEditAccountSearch("");
-                                      setEditAccountSelected(false);
-                                    }}
-                                    className="w-full text-left px-2 py-1.5 text-xs text-red-500 hover:bg-bg"
-                                  >
-                                    Clear account
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3 px-4">{program.is_default ? "✓ N/A" : "—"}</td>
-                        <td className="py-3 px-4">
-                          <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <div className="relative">
                             <input
-                              type="checkbox"
-                              checked={editData.is_active}
-                              onChange={(e) => setEditData({ ...editData, is_active: e.target.checked })}
-                              className="rounded"
+                              value={editAccountSearch}
+                              onChange={(e) => {
+                                setEditAccountSearch(e.target.value);
+                                setEditData({ ...editData, account_id: "" });
+                                setEditAccountSelected(false);
+                              }}
+                              placeholder="Search account…"
+                              className="w-full rounded border border-border bg-surface text-text-primary px-2 py-1 text-sm"
                             />
-                            Active
-                          </label>
+                            {editAccountSearch && !editAccountSelected && (
+                              <div className="absolute z-10 mt-0.5 w-full border border-border rounded bg-surface shadow-md max-h-36 overflow-y-auto">
+                                {accounts
+                                  .filter((a) => a.name.toLowerCase().includes(editAccountSearch.toLowerCase()))
+                                  .map((a) => (
+                                    <button
+                                      key={a.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setEditData({ ...editData, account_id: a.id });
+                                        setEditAccountSearch(a.name);
+                                        setEditAccountSelected(true);
+                                      }}
+                                      className="w-full text-left px-2 py-1.5 text-sm hover:bg-bg text-text-primary"
+                                    >
+                                      {a.name}
+                                    </button>
+                                  ))}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditData({ ...editData, account_id: "" });
+                                    setEditAccountSearch("");
+                                    setEditAccountSelected(false);
+                                  }}
+                                  className="w-full text-left px-2 py-1.5 text-xs text-red-500 hover:bg-bg"
+                                >
+                                  Clear account
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex gap-2">
@@ -336,14 +316,8 @@ function ProgramsContent() {
                       </>
                     ) : deletingId === program.id ? (
                       <>
-                        <td className="py-3 px-4 font-medium text-red-600">Delete “{program.name}”?</td>
+                        <td className="py-3 px-4 font-medium text-red-600">Delete "{program.name}"?</td>
                         <td className="py-3 px-4 text-text-secondary">{program.account_name ?? "—"}</td>
-                        <td className="py-3 px-4">{program.is_default ? "✓ N/A" : "—"}</td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${program.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
-                            {program.is_active ? "Active" : "Inactive"}
-                          </span>
-                        </td>
                         <td className="py-3 px-4">
                           <div className="flex gap-2">
                             <button
@@ -366,12 +340,6 @@ function ProgramsContent() {
                       <>
                         <td className="py-3 px-4 font-medium">{program.name}</td>
                         <td className="py-3 px-4 text-text-secondary">{program.account_name ?? "—"}</td>
-                        <td className="py-3 px-4">{program.is_default ? "✓ N/A" : "—"}</td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${program.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
-                            {program.is_active ? "Active" : "Inactive"}
-                          </span>
-                        </td>
                         <td className="py-3 px-4">
                           <div className="flex gap-2">
                             <button
@@ -380,14 +348,12 @@ function ProgramsContent() {
                             >
                               Edit
                             </button>
-                            {!program.is_default && (
-                              <button
-                                onClick={() => setDeletingId(program.id)}
-                                className="text-sm text-red-500 hover:underline font-medium"
-                              >
-                                Delete
-                              </button>
-                            )}
+                            <button
+                              onClick={() => setDeletingId(program.id)}
+                              className="text-sm text-red-500 hover:underline font-medium"
+                            >
+                              Delete
+                            </button>
                           </div>
                         </td>
                       </>

@@ -107,9 +107,10 @@ async def update_assignment(
     # Build response before commit (relationships are loaded now, expired after commit)
     response = AssignmentRead.model_validate(assignment)
     ip, ua = _client_info(request)
+    audit_details = {k: str(v) if hasattr(v, "__str__") else v for k, v in data.model_dump(exclude_unset=True).items()}
     await audit_service.log_action(
         db, "ASSIGNMENT_UPDATED", user_id=current_user.id, resource_type="assignment", resource_id=str(assignment_id),
-        details=data.model_dump(exclude_unset=True), ip_address=ip, user_agent=ua
+        details=audit_details, ip_address=ip, user_agent=ua
     )
     await db.commit()
     return response

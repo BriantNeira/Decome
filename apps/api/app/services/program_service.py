@@ -56,12 +56,6 @@ async def create_program(
 async def update_program(db: AsyncSession, program_id: str, **fields) -> Program:
     program = await get_program(db, program_id)
 
-    if program.is_default and "name" in fields and fields["name"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot rename the default program",
-        )
-
     if "name" in fields and fields["name"]:
         existing = await db.execute(
             select(Program).where(Program.name == fields["name"], Program.id != program_id)
@@ -81,11 +75,6 @@ async def update_program(db: AsyncSession, program_id: str, **fields) -> Program
 
 async def delete_program(db: AsyncSession, program_id: str) -> Program:
     program = await get_program(db, program_id)
-
-    if program.is_default:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete the default program"
-        )
 
     result = await db.execute(
         select(Assignment).where(

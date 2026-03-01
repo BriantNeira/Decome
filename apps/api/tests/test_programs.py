@@ -96,27 +96,30 @@ async def test_update_program(client: AsyncClient, admin_token: str, db: AsyncSe
 
 
 @pytest.mark.asyncio
-async def test_cannot_rename_default_program(client: AsyncClient, admin_token: str, db: AsyncSession):
-    """Admin cannot rename the default N/A program"""
-    # Get the default program
+async def test_can_rename_any_program(client: AsyncClient, admin_token: str, db: AsyncSession):
+    """Admin can rename any program including the legacy default one"""
     from sqlalchemy import select
     result = await db.execute(select(Program).where(Program.is_default == True))
-    default_program = result.scalar_one()
+    default_program = result.scalar_one_or_none()
+    if default_program is None:
+        pytest.skip("No default program in DB")
 
-    payload = {"name": "Not N/A"}
+    payload = {"name": "Renamed Default"}
     res = await client.patch(f"/api/programs/{default_program.id}", json=payload, headers={"Authorization": f"Bearer {admin_token}"})
-    assert res.status_code == 400
+    assert res.status_code == 200
+    assert res.json()["name"] == "Renamed Default"
 
 
 @pytest.mark.asyncio
-async def test_cannot_delete_default_program(client: AsyncClient, admin_token: str, db: AsyncSession):
-    """Admin cannot delete the default N/A program"""
-    from sqlalchemy import select
-    result = await db.execute(select(Program).where(Program.is_default == True))
-    default_program = result.scalar_one()
+async def test_can_delete_program_without_active_assignments(client: AsyncClient, admin_token: str, db: AsyncSession):
+    """Admin can delete any program that has no active assignments"""
+    program = Program(name="Deletable Program", description="Test", is_default=False)
+    db.add(program)
+    await db.commit()
+    await db.refresh(program)
 
-    res = await client.delete(f"/api/programs/{default_program.id}", headers={"Authorization": f"Bearer {admin_token}"})
-    assert res.status_code == 400
+    res = await client.delete(f"/api/programs/{program.id}", headers={"Authorization": f"Bearer {admin_token}"})
+    assert res.status_code == 200
 
 
 @pytest.mark.asyncio
