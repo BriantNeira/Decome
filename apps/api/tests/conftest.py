@@ -1,9 +1,16 @@
 from typing import AsyncGenerator
 
+import pytest
 import pytest_asyncio
+
+# Make every async test in this directory use the session-scoped event loop,
+# matching the session-scoped setup_db fixture and function-scoped fixtures
+# that all run in the same session event loop (asyncio_default_fixture_loop_scope=session).
+pytestmark = pytest.mark.asyncio(loop_scope="session")
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.database import Base, get_db
 from app.main import app
@@ -14,7 +21,11 @@ from app.utils.security import hash_password
 
 TEST_DB_URL = "postgresql+asyncpg://decome:decome_dev_pass@db:5432/decome_test"
 
-test_engine = create_async_engine(TEST_DB_URL, echo=False)
+# NullPool: every checkout creates a fresh connection and closes it on return.
+# This prevents asyncpg connections (which are event-loop-bound) from being
+# accidentally reused across the session-scoped setup_db and function-scoped
+# per-test fixtures, which run in different event loops.
+test_engine = create_async_engine(TEST_DB_URL, echo=False, poolclass=NullPool)
 TestSession = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -38,6 +49,7 @@ async def setup_db():
         "postgresql+asyncpg://decome:decome_dev_pass@db:5432/decome",
         echo=False,
         isolation_level="AUTOCOMMIT",
+        poolclass=NullPool,
     )
     async with admin_engine.connect() as conn:
         result = await conn.execute(

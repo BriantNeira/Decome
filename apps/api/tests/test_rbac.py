@@ -3,6 +3,8 @@ from httpx import AsyncClient
 
 from app.models import User
 
+pytestmark = pytest.mark.asyncio(loop_scope="session")
+
 
 @pytest.mark.asyncio
 async def test_admin_can_list_users(client: AsyncClient, admin_token: str):
@@ -26,7 +28,7 @@ async def test_director_cannot_list_users(client: AsyncClient, director_token: s
 @pytest.mark.asyncio
 async def test_unauthenticated_cannot_list_users(client: AsyncClient):
     res = await client.get("/api/users")
-    assert res.status_code == 403
+    assert res.status_code == 401
 
 
 @pytest.mark.asyncio

@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.audit_log import AuditLog
 from app.models import User
 
+pytestmark = pytest.mark.asyncio(loop_scope="session")
+
 
 @pytest.mark.asyncio
 async def test_login_creates_audit_log(client: AsyncClient, admin_user: User, db: AsyncSession):
@@ -42,7 +44,7 @@ async def test_failed_login_creates_audit_log(client: AsyncClient, admin_user: U
 @pytest.mark.asyncio
 async def test_user_creation_creates_audit_log(client: AsyncClient, admin_token: str, db: AsyncSession):
     await client.post("/api/auth/register", json={
-        "email": "auditcheck@test.local",
+        "email": "auditcheck@test.example",
         "password": "AuditTest1!",
         "full_name": "Audit Check",
         "role": "bdm",

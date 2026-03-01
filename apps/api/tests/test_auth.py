@@ -1,8 +1,11 @@
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User
+
+pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
 @pytest.mark.asyncio
@@ -34,14 +37,14 @@ async def test_login_unknown_email(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_login_inactive_user(client: AsyncClient, db: AsyncSession, bdm_user: User):
-    bdm_user.is_active = False
+    await db.execute(update(User).where(User.id == bdm_user.id).values(is_active=False))
     await db.commit()
     res = await client.post("/api/auth/login", json={
         "email": bdm_user.email, "password": "Test123!"
     })
     assert res.status_code == 401
     # Restore
-    bdm_user.is_active = True
+    await db.execute(update(User).where(User.id == bdm_user.id).values(is_active=True))
     await db.commit()
 
 
@@ -57,7 +60,7 @@ async def test_me_returns_current_user(client: AsyncClient, admin_token: str, ad
 @pytest.mark.asyncio
 async def test_me_unauthenticated(client: AsyncClient):
     res = await client.get("/api/auth/me")
-    assert res.status_code == 403  # HTTPBearer returns 403 when no Authorization header
+    assert res.status_code == 401  # HTTPBearer returns 401 when no Authorization header
 
 
 @pytest.mark.asyncio
@@ -70,7 +73,7 @@ async def test_me_invalid_token(client: AsyncClient):
 async def test_register_admin_only(client: AsyncClient, admin_token: str, bdm_token: str):
     # Admin can register
     res = await client.post("/api/auth/register", json={
-        "email": "newbdm@test.local",
+        "email": "newbdm@test.example",
         "password": "NewPass1!",
         "full_name": "New BDM",
         "role": "bdm",
@@ -79,7 +82,7 @@ async def test_register_admin_only(client: AsyncClient, admin_token: str, bdm_to
 
     # BDM cannot register
     res2 = await client.post("/api/auth/register", json={
-        "email": "another@test.local",
+        "email": "another@test.example",
         "password": "NewPass1!",
         "full_name": "Another",
         "role": "bdm",
@@ -102,7 +105,7 @@ async def test_register_duplicate_email(client: AsyncClient, admin_token: str, a
 async def test_password_reset_request_always_succeeds(client: AsyncClient):
     # Should return 200 whether or not email exists
     res = await client.post("/api/auth/password-reset/request", json={
-        "email": "doesnotexist@test.local"
+        "email": "doesnotexist@test.example"
     })
     assert res.status_code == 200
 
@@ -119,7 +122,7 @@ async def test_password_reset_invalid_token(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_2fa_setup_requires_auth(client: AsyncClient):
     res = await client.post("/api/auth/2fa/setup")
-    assert res.status_code == 403
+    assert res.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -139,8 +142,9 @@ async def test_2fa_setup_and_enable(client: AsyncClient, director_token: str, di
     assert res2.status_code == 400
 
     # Cleanup: remove totp_secret so future tests are clean
-    director_user.totp_secret = None
-    director_user.totp_enabled = False
+    await db.execute(
+        update(User).where(User.id == director_user.id).values(totp_secret=None, totp_enabled=False)
+    )
     await db.commit()
 
 

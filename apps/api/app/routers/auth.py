@@ -58,6 +58,10 @@ async def login(
             ip_address=ip,
             user_agent=ua,
         )
+        try:
+            await db.commit()
+        except Exception:
+            pass
         raise
 
 

@@ -3,6 +3,8 @@ import io
 import pytest
 from httpx import AsyncClient
 
+pytestmark = pytest.mark.asyncio(loop_scope="session")
+
 
 @pytest.mark.asyncio
 async def test_get_branding_public(client: AsyncClient):
