@@ -1,14 +1,15 @@
-import asyncio
 from typing import AsyncGenerator
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.database import Base, get_db
 from app.main import app
 from app.models import Role, User  # noqa: F401
+from app.models.branding import BrandingConfig  # noqa: F401
+from app.models.audit_log import AuditLog  # noqa: F401
 from app.utils.security import hash_password
 
 TEST_DB_URL = "postgresql+asyncpg://decome:decome_dev_pass@db:5432/decome_test"
@@ -32,12 +33,39 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_db():
+    # Ensure test database exists
+    admin_engine = create_async_engine(
+        "postgresql+asyncpg://decome:decome_dev_pass@db:5432/decome",
+        echo=False,
+        isolation_level="AUTOCOMMIT",
+    )
+    async with admin_engine.connect() as conn:
+        result = await conn.execute(
+            text("SELECT 1 FROM pg_database WHERE datname='decome_test'")
+        )
+        if not result.scalar():
+            await conn.execute(text("CREATE DATABASE decome_test"))
+    await admin_engine.dispose()
+
+    # Create schema in test db
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+
+    # Seed roles
+    async with TestSession() as session:
+        from sqlalchemy import select
+        for role_name in ("admin", "bdm", "director"):
+            result = await session.execute(select(Role).where(Role.name == role_name))
+            if not result.scalar_one_or_none():
+                session.add(Role(name=role_name, description=role_name))
+        await session.commit()
+
     yield
+
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+    await test_engine.dispose()
 
 
 @pytest_asyncio.fixture
@@ -85,17 +113,17 @@ async def _create_user(db: AsyncSession, email: str, role_name: str, password: s
 
 @pytest_asyncio.fixture
 async def admin_user(db: AsyncSession) -> User:
-    return await _create_user(db, "admin_test@test.local", "admin")
+    return await _create_user(db, "admin_test@test.example", "admin")
 
 
 @pytest_asyncio.fixture
 async def bdm_user(db: AsyncSession) -> User:
-    return await _create_user(db, "bdm_test@test.local", "bdm")
+    return await _create_user(db, "bdm_test@test.example", "bdm")
 
 
 @pytest_asyncio.fixture
 async def director_user(db: AsyncSession) -> User:
-    return await _create_user(db, "director_test@test.local", "director")
+    return await _create_user(db, "director_test@test.example", "director")
 
 
 async def _get_token(client: AsyncClient, email: str, password: str = "Test123!") -> str:

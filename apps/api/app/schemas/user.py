@@ -1,7 +1,8 @@
 import uuid
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, field_validator
 
 from app.utils.security import validate_password_policy
+from app.utils.validators import LocalEmail
 
 
 class UserRead(BaseModel):
@@ -29,7 +30,7 @@ class UserUpdate(BaseModel):
 
 
 class UserCreate(BaseModel):
-    email: EmailStr
+    email: LocalEmail
     password: str
     full_name: str
     role: str

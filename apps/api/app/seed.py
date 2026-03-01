@@ -22,7 +22,7 @@ ROLES = [
 ]
 
 ADMIN_USER = {
-    "email": "admin@decome.local",
+    "email": "admin@decome.app",
     "password": "Admin123!",
     "full_name": "System Admin",
     "role": "admin",

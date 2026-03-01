@@ -15,7 +15,7 @@ DecoMe is a BDM (Business Development Manager) Reminder & AI Communications Plat
 ### First-time Admin Setup
 
 Default admin credentials:
-- **Email**: admin@decome.local
+- **Email**: admin@decome.app
 - **Password**: Admin123!
 
 **Important**: Change the password immediately after first login.
