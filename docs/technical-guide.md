@@ -31,7 +31,7 @@ make migrate  # Run pending Alembic migrations
 
 | User | Email | Password | Role |
 |------|-------|----------|------|
-| Admin | admin@decome.local | Admin123! | admin |
+| Admin | admin@decome.app | Admin123! | admin |
 
 **Change the admin password immediately after first login in any non-dev environment.**
 

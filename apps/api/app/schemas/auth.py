@@ -1,11 +1,12 @@
 import uuid
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, field_validator
 
 from app.utils.security import validate_password_policy
+from app.utils.validators import LocalEmail
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: LocalEmail
     password: str
 
 
@@ -22,7 +23,7 @@ class TwoFAVerifyRequest(BaseModel):
 
 
 class RegisterRequest(BaseModel):
-    email: EmailStr
+    email: LocalEmail
     password: str
     full_name: str
     role: str  # "admin" | "bdm" | "director"
@@ -46,7 +47,7 @@ class RegisterRequest(BaseModel):
 
 
 class PasswordResetRequest(BaseModel):
-    email: EmailStr
+    email: LocalEmail
 
 
 class PasswordResetConfirm(BaseModel):
