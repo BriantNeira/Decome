@@ -17,16 +17,17 @@ export function Header({ title }: HeaderProps) {
     ? branding.logo_dark_url
     : branding.logo_light_url;
 
-  // Sync favicon with branding config
+  // Sync favicon with branding config.
+  // Remove-and-recreate the <link> element to force browser to re-fetch
+  // (browsers cache favicons and ignore simple href mutations).
   useEffect(() => {
+    const existing = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (existing) existing.remove();
     if (!branding.favicon_url) return;
-    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
-    if (!link) {
-      link = document.createElement("link");
-      link.rel = "icon";
-      document.head.appendChild(link);
-    }
-    link.href = branding.favicon_url;
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.href = `${branding.favicon_url}?v=${Date.now()}`;
+    document.head.appendChild(link);
   }, [branding.favicon_url]);
 
   return (
