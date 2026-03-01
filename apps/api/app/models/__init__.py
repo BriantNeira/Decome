@@ -9,6 +9,7 @@ from app.models.assignment import Assignment
 from app.models.contact import Contact, contact_programs
 from app.models.reminder_type import ReminderType
 from app.models.custom_field import CustomFieldDefinition, CustomFieldValue
+from app.models.reminder import Reminder
 
 __all__ = [
     "Role",
@@ -24,4 +25,5 @@ __all__ = [
     "ReminderType",
     "CustomFieldDefinition",
     "CustomFieldValue",
+    "Reminder",
 ]

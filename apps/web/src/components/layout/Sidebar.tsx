@@ -16,15 +16,19 @@ const NAV_GROUPS = [
   {
     label: "My Work",
     items: [
-      { href: "/dashboard/my-assignments", label: "My Assignments", roles: ["bdm"] },
+      { href: "/dashboard/my-assignments",        label: "My Assignments", roles: ["bdm"] },
+      { href: "/dashboard/reminders",             label: "Reminders",      roles: ["bdm"] },
+      { href: "/dashboard/reminders/calendar",    label: "Calendar",       roles: ["bdm"] },
     ],
   },
   {
     label: "Management",
     items: [
-      { href: "/dashboard/admin/accounts", label: "Accounts", roles: ["admin", "director"] },
-      { href: "/dashboard/admin/contacts", label: "Contacts", roles: ["admin", "bdm"] },
-      { href: "/dashboard/admin/programs", label: "Programs", roles: ["admin"] },
+      { href: "/dashboard/admin/accounts",        label: "Accounts",       roles: ["admin", "director"] },
+      { href: "/dashboard/admin/contacts",        label: "Contacts",       roles: ["admin", "bdm"] },
+      { href: "/dashboard/admin/programs",        label: "Programs",       roles: ["admin"] },
+      { href: "/dashboard/reminders",             label: "Reminders",      roles: ["admin"] },
+      { href: "/dashboard/reminders/calendar",    label: "Calendar",       roles: ["admin"] },
     ],
   },
   {

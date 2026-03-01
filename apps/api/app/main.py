@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.routers import auth, branding, health, users, accounts, programs, assignments, reminder_types, custom_fields, account_notes, contacts
+from app.routers import auth, branding, health, users, accounts, programs, assignments, reminder_types, custom_fields, account_notes, contacts, reminders
 from app.services import branding_service
 
 app = FastAPI(
@@ -36,6 +36,7 @@ app.include_router(reminder_types.router)
 app.include_router(custom_fields.router)
 app.include_router(account_notes.router)
 app.include_router(contacts.router)
+app.include_router(reminders.router)
 
 
 @app.get("/favicon.ico", include_in_schema=False)

@@ -106,3 +106,34 @@ export interface CustomFieldValue {
   field_type: string;
   value: string | null;
 }
+
+export interface Reminder {
+  id: string;
+  user_id: string;
+  account_id: string;
+  account_name: string | null;
+  program_id: string | null;
+  program_name: string | null;
+  type_id: number | null;
+  type_name: string | null;
+  type_color: string | null;
+  title: string;
+  notes: string | null;
+  status: "open" | "in_progress" | "completed" | "cancelled";
+  start_date: string;
+  recurrence_rule: string | null;
+  edit_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReminderStats {
+  open: number;
+  in_progress: number;
+  overdue: number;
+  completed_this_month: number;
+}
+
+export interface CalendarReminder extends Reminder {
+  occurrence_date: string;
+}
