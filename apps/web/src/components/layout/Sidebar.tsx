@@ -34,10 +34,30 @@ function NavLink({ href, label, pathname }: { href: string; label: string; pathn
         ${active ? "text-white" : "text-sidebar-text hover:text-white"}
       `}
     >
-      {active && <span className="absolute inset-0 rounded-lg bg-sidebar-active/25" />}
-      <span className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 bg-white/5 transition-opacity duration-150" />
-      <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-r-full bg-sidebar-active transition-all duration-150 ${active ? "opacity-100" : "opacity-0 group-hover:opacity-40"}`} />
-      <span className="relative">{label}</span>
+      {active && <span className="absolute inset-0 rounded-lg bg-sidebar-active/20" />}
+      <span className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 bg-white/4 transition-opacity duration-150" />
+      {/* Left accent bar — active only */}
+      {active && (
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-r-full bg-sidebar-active" />
+      )}
+      {/* Label with underline on hover */}
+      <span
+        className="relative"
+        style={{
+          textDecoration: "none",
+          borderBottom: "2px solid transparent",
+          paddingBottom: "1px",
+          transition: "border-color 0.15s",
+        }}
+        onMouseEnter={(e) => {
+          if (!active) (e.currentTarget as HTMLElement).style.borderBottomColor = "var(--color-nav-underline)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.borderBottomColor = "transparent";
+        }}
+      >
+        {label}
+      </span>
     </Link>
   );
 }
