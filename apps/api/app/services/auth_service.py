@@ -61,7 +61,7 @@ async def login(db: AsyncSession, email: str, password: str) -> dict:
     return {"requires_2fa": False, "access_token": access_token}
 
 
-async def verify_2fa(db: AsyncSession, temp_token: str, code: str) -> str:
+async def verify_2fa(db: AsyncSession, temp_token: str, code: str) -> tuple[str, uuid.UUID]:
     try:
         payload = decode_access_token(temp_token)
     except JWTError:
@@ -94,7 +94,7 @@ async def verify_2fa(db: AsyncSession, temp_token: str, code: str) -> str:
     access_token = create_access_token(
         {"sub": str(user.id), "email": user.email, "role": user.role.name}
     )
-    return access_token
+    return access_token, user.id
 
 
 async def register_user(

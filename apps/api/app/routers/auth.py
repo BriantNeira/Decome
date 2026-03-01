@@ -72,10 +72,11 @@ async def verify_2fa(
     db: AsyncSession = Depends(get_db),
 ):
     ip, ua = _client_info(request)
-    access_token = await auth_service.verify_2fa(db, body.temp_token, body.code)
+    access_token, user_id = await auth_service.verify_2fa(db, body.temp_token, body.code)
     await audit_service.log_action(
         db,
         action="LOGIN_2FA_SUCCESS",
+        user_id=user_id,
         ip_address=ip,
         user_agent=ua,
     )
