@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useBranding } from "@/hooks/useBranding";
+import { useTheme } from "@/hooks/useTheme";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "🏠", roles: ["admin", "bdm", "director"] },
@@ -15,6 +17,12 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { branding } = useBranding();
+  const { theme } = useTheme();
+
+  const logoUrl = theme === "night" && branding.logo_dark_url
+    ? branding.logo_dark_url
+    : branding.logo_light_url;
 
   async function handleLogout() {
     await logout();
@@ -26,7 +34,11 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex flex-col w-64 min-h-screen bg-surface border-r border-border">
       <div className="flex items-center h-16 px-6 border-b border-border">
-        <span className="font-semibold text-lg text-text-primary">DecoMe</span>
+        {logoUrl ? (
+          <img src={logoUrl} alt="Logo" className="h-8 w-auto max-w-[160px] object-contain" />
+        ) : (
+          <span className="font-semibold text-lg text-text-primary">DecoMe</span>
+        )}
       </div>
 
       <nav className="flex-1 py-4 px-3 space-y-1">

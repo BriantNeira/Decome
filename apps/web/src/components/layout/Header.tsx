@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useBranding } from "@/hooks/useBranding";
 import { useTheme } from "@/hooks/useTheme";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -15,6 +16,18 @@ export function Header({ title }: HeaderProps) {
   const logoUrl = theme === "night" && branding.logo_dark_url
     ? branding.logo_dark_url
     : branding.logo_light_url;
+
+  // Sync favicon with branding config
+  useEffect(() => {
+    if (!branding.favicon_url) return;
+    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.href = branding.favicon_url;
+  }, [branding.favicon_url]);
 
   return (
     <header className="h-16 border-b border-border bg-surface flex items-center px-6 gap-4">
