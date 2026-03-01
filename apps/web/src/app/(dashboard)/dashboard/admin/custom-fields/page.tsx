@@ -43,6 +43,9 @@ function CustomFieldsContent() {
   const [showAdd, setShowAdd] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editData, setEditData] = useState({ field_name: "", is_required: false, sort_order: 0, choices: "" });
+  const [editSubmitting, setEditSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     field_name: "",
     field_type: "text" as CustomFieldDefinition["field_type"],
@@ -113,6 +116,45 @@ function CustomFieldsContent() {
       showToast(parseApiError(err, "Failed to create custom field"), "error");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  function startEdit(field: CustomFieldDefinition) {
+    setEditingId(field.id);
+    const choices = field.options?.choices?.join(", ") ?? "";
+    setEditData({
+      field_name: field.field_name,
+      is_required: field.is_required,
+      sort_order: field.sort_order,
+      choices,
+    });
+  }
+
+  async function handleSaveEdit(fieldId: number, fieldType: string) {
+    if (!editData.field_name.trim()) {
+      showToast("Field name is required", "error");
+      return;
+    }
+    setEditSubmitting(true);
+    try {
+      const payload: any = {
+        field_name: editData.field_name.trim(),
+        is_required: editData.is_required,
+        sort_order: editData.sort_order,
+      };
+      if (fieldType === "dropdown" && editData.choices.trim()) {
+        payload.options = {
+          choices: editData.choices.split(",").map((s) => s.trim()).filter(Boolean),
+        };
+      }
+      await api.patch(`/custom-fields/definitions/${fieldId}`, payload);
+      showToast("Field updated", "success");
+      setEditingId(null);
+      await loadFields();
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to update field"), "error");
+    } finally {
+      setEditSubmitting(false);
     }
   }
 
@@ -275,7 +317,67 @@ function CustomFieldsContent() {
               </thead>
               <tbody>
                 {fields.map((f) =>
-                  deleteConfirmId === f.id ? (
+                  editingId === f.id ? (
+                    <tr key={f.id} className="border-b border-border bg-surface">
+                      <td className="py-3 px-4">
+                        <input
+                          value={editData.field_name}
+                          onChange={(e) => setEditData({ ...editData, field_name: e.target.value })}
+                          className="w-full rounded border border-border bg-bg text-text-primary px-2 py-1 text-sm"
+                        />
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded bg-surface-secondary text-text-secondary text-xs font-mono">
+                          {FIELD_TYPE_LABELS[f.field_type] ?? f.field_type}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 capitalize text-text-secondary">{f.entity_type}</td>
+                      <td className="py-3 px-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={editData.is_required}
+                          onChange={(e) => setEditData({ ...editData, is_required: e.target.checked })}
+                          className="rounded"
+                        />
+                      </td>
+                      <td className="py-3 px-4">
+                        <input
+                          type="number"
+                          value={editData.sort_order}
+                          onChange={(e) => setEditData({ ...editData, sort_order: parseInt(e.target.value) || 0 })}
+                          className="w-16 rounded border border-border bg-bg text-text-primary px-2 py-1 text-sm"
+                          min={0}
+                        />
+                      </td>
+                      <td className="py-3 px-4">
+                        {f.field_type === "dropdown" && (
+                          <input
+                            value={editData.choices}
+                            onChange={(e) => setEditData({ ...editData, choices: e.target.value })}
+                            className="w-full rounded border border-border bg-bg text-text-primary px-2 py-1 text-xs"
+                            placeholder="choices, comma-separated"
+                          />
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleSaveEdit(f.id, f.field_type)}
+                            disabled={editSubmitting}
+                            className="text-xs text-green-600 font-semibold hover:underline disabled:opacity-50"
+                          >
+                            {editSubmitting ? "Saving…" : "Save"}
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="text-xs text-text-secondary hover:underline"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : deleteConfirmId === f.id ? (
                     <tr key={f.id} className="border-b border-border bg-red-50">
                       <td className="py-3 px-4 font-medium">{f.field_name}</td>
                       <td colSpan={5} className="py-3 px-4">
@@ -329,6 +431,12 @@ function CustomFieldsContent() {
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex justify-end gap-3">
+                        <button
+                          onClick={() => startEdit(f)}
+                          className="text-xs text-brand hover:underline font-medium"
+                        >
+                          Edit
+                        </button>
                         <button
                           onClick={() => handleToggleActive(f)}
                           className="text-xs text-text-secondary hover:text-text-primary underline"

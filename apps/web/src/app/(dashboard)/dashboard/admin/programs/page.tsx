@@ -30,7 +30,9 @@ function ProgramsContent() {
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState({ name: "", description: "", is_active: true });
+  const [editData, setEditData] = useState({ name: "", description: "", is_active: true, account_id: "" });
+  const [editAccountSearch, setEditAccountSearch] = useState("");
+  const [editAccountSelected, setEditAccountSelected] = useState(false);
 
   // Delete state
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -93,17 +95,23 @@ function ProgramsContent() {
       name: program.name,
       description: program.description || "",
       is_active: program.is_active,
+      account_id: program.account_id ?? "",
     });
+    const acctName = program.account_name ?? "";
+    setEditAccountSearch(acctName);
+    setEditAccountSelected(!!acctName);
   }
 
   async function handleSaveEdit(programId: string) {
     setSubmitting(true);
     try {
-      await api.patch(`/programs/${programId}`, {
+      const payload: any = {
         name: editData.name,
         description: editData.description || null,
         is_active: editData.is_active,
-      });
+      };
+      if (editData.account_id) payload.account_id = editData.account_id;
+      await api.patch(`/programs/${programId}`, payload);
       showToast("Program updated", "success");
       setEditingId(null);
       await loadPrograms();
@@ -247,7 +255,55 @@ function ProgramsContent() {
                             disabled={program.is_default}
                           />
                         </td>
-                        <td className="py-3 px-4 text-text-secondary">{program.account_name ?? "—"}</td>
+                        <td className="py-3 px-4">
+                          {program.is_default ? (
+                            <span className="text-text-secondary text-xs">N/A (default)</span>
+                          ) : (
+                            <div className="relative">
+                              <input
+                                value={editAccountSearch}
+                                onChange={(e) => {
+                                  setEditAccountSearch(e.target.value);
+                                  setEditData({ ...editData, account_id: "" });
+                                  setEditAccountSelected(false);
+                                }}
+                                placeholder="Search account…"
+                                className="w-full rounded border border-border bg-surface text-text-primary px-2 py-1 text-sm"
+                              />
+                              {editAccountSearch && !editAccountSelected && (
+                                <div className="absolute z-10 mt-0.5 w-full border border-border rounded bg-surface shadow-md max-h-36 overflow-y-auto">
+                                  {accounts
+                                    .filter((a) => a.name.toLowerCase().includes(editAccountSearch.toLowerCase()))
+                                    .map((a) => (
+                                      <button
+                                        key={a.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setEditData({ ...editData, account_id: a.id });
+                                          setEditAccountSearch(a.name);
+                                          setEditAccountSelected(true);
+                                        }}
+                                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-bg text-text-primary"
+                                      >
+                                        {a.name}
+                                      </button>
+                                    ))}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditData({ ...editData, account_id: "" });
+                                      setEditAccountSearch("");
+                                      setEditAccountSelected(false);
+                                    }}
+                                    className="w-full text-left px-2 py-1.5 text-xs text-red-500 hover:bg-bg"
+                                  >
+                                    Clear account
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
                         <td className="py-3 px-4">{program.is_default ? "✓ N/A" : "—"}</td>
                         <td className="py-3 px-4">
                           <label className="flex items-center gap-2 text-sm cursor-pointer">

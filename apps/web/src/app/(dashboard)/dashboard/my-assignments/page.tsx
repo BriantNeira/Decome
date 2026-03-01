@@ -107,23 +107,32 @@ function MyAssignmentsContent() {
             <Card key={assignment.id} padding="md">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
-                  <p className="text-xs text-text-secondary uppercase">Account</p>
-                  <p className="font-semibold text-text-primary">
+                  <p className="text-xs text-text-secondary uppercase mb-1">Account</p>
+                  <button
+                    onClick={() => router.push(`/dashboard/admin/accounts/${assignment.account_id}`)}
+                    className="font-semibold text-brand hover:underline text-left"
+                  >
                     {assignment.account_name ?? assignment.account_id.substring(0, 8) + "…"}
-                  </p>
+                  </button>
                 </div>
                 <div>
-                  <p className="text-xs text-text-secondary uppercase">Program</p>
+                  <p className="text-xs text-text-secondary uppercase mb-1">Program</p>
                   <p className="font-semibold text-text-primary">
                     {assignment.program_name ?? assignment.program_id.substring(0, 8) + "…"}
                   </p>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex flex-col items-end gap-2">
+                  <button
+                    onClick={() => router.push(`/dashboard/admin/accounts/${assignment.account_id}`)}
+                    className="text-sm text-text-secondary hover:text-text-primary hover:underline"
+                  >
+                    View Account →
+                  </button>
                   <button
                     onClick={() => router.push(`/dashboard/admin/contacts?account_id=${assignment.account_id}`)}
                     className="text-sm text-brand hover:underline font-medium"
                   >
-                    View Account Contacts →
+                    View Contacts →
                   </button>
                 </div>
               </div>

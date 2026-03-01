@@ -9,11 +9,21 @@ from app.models.user import User
 from app.utils.security import hash_password
 
 
-async def list_users(db: AsyncSession, skip: int = 0, limit: int = 50) -> tuple[list[User], int]:
-    count_result = await db.execute(select(func.count()).select_from(User))
+async def list_users(
+    db: AsyncSession, skip: int = 0, limit: int = 50, role: str | None = None
+) -> tuple[list[User], int]:
+    from sqlalchemy.orm import selectinload
+    query = select(User).options(selectinload(User.role))
+    count_query = select(func.count()).select_from(User)
+
+    if role:
+        query = query.join(User.role).where(Role.name == role)
+        count_query = count_query.join(Role, User.role_id == Role.id).where(Role.name == role)
+
+    count_result = await db.execute(count_query)
     total = count_result.scalar_one()
 
-    result = await db.execute(select(User).offset(skip).limit(limit).order_by(User.created_at.desc()))
+    result = await db.execute(query.offset(skip).limit(limit).order_by(User.created_at.desc()))
     users = list(result.scalars().all())
     return users, total
 

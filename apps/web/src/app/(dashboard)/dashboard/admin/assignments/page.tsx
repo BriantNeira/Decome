@@ -51,7 +51,7 @@ function AssignmentsContent() {
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState({ user_id: "", is_active: true });
+  const [editData, setEditData] = useState({ user_id: "", account_id: "", program_id: "", is_active: true });
   const [editSubmitting, setEditSubmitting] = useState(false);
 
   // Delete state
@@ -119,7 +119,7 @@ function AssignmentsContent() {
 
   function startEdit(a: Assignment) {
     setEditingId(a.id);
-    setEditData({ user_id: a.user_id, is_active: a.is_active });
+    setEditData({ user_id: a.user_id, account_id: a.account_id, program_id: a.program_id, is_active: a.is_active });
   }
 
   async function handleSaveEdit(assignmentId: string) {
@@ -168,6 +168,10 @@ function AssignmentsContent() {
   // Filter programs by selected account (show programs for that account + programs with no account)
   const filteredPrograms = formData.account_id
     ? programs.filter((p) => !p.account_id || p.account_id === formData.account_id)
+    : programs;
+
+  const editFilteredPrograms = editData.account_id
+    ? programs.filter((p) => !p.account_id || p.account_id === editData.account_id)
     : programs;
 
   return (
@@ -257,7 +261,6 @@ function AssignmentsContent() {
                   <th className="text-left py-3 px-4 font-medium text-text-secondary">BDM</th>
                   <th className="text-left py-3 px-4 font-medium text-text-secondary">Account</th>
                   <th className="text-left py-3 px-4 font-medium text-text-secondary">Program</th>
-                  <th className="text-left py-3 px-4 font-medium text-text-secondary">Contact</th>
                   <th className="text-left py-3 px-4 font-medium text-text-secondary">Status</th>
                   <th className="py-3 px-4 text-right font-medium text-text-secondary">Actions</th>
                 </tr>
@@ -271,7 +274,7 @@ function AssignmentsContent() {
                     <tr key={a.id} className="border-b border-border hover:bg-bg">
                       {isEditing ? (
                         <>
-                          <td className="py-3 px-4" colSpan={2}>
+                          <td className="py-3 px-4">
                             <select
                               value={editData.user_id}
                               onChange={(e) => setEditData({ ...editData, user_id: e.target.value })}
@@ -284,9 +287,29 @@ function AssignmentsContent() {
                               ))}
                             </select>
                           </td>
-                          <td className="py-3 px-4">{getProgramName(a.program_id)}</td>
-                          <td className="py-3 px-4 text-text-secondary text-xs">
-                            {a.contact?.primary_contact_name ?? "—"}
+                          <td className="py-3 px-4">
+                            <select
+                              value={editData.account_id}
+                              onChange={(e) => setEditData({ ...editData, account_id: e.target.value, program_id: "" })}
+                              className="rounded border border-border bg-surface text-text-primary px-2 py-1 text-sm w-full"
+                            >
+                              <option value="">Select account…</option>
+                              {accounts.map((ac) => (
+                                <option key={ac.id} value={ac.id}>{ac.name}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="py-3 px-4">
+                            <select
+                              value={editData.program_id}
+                              onChange={(e) => setEditData({ ...editData, program_id: e.target.value })}
+                              className="rounded border border-border bg-surface text-text-primary px-2 py-1 text-sm w-full"
+                            >
+                              <option value="">Select program…</option>
+                              {editFilteredPrograms.map((p) => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                              ))}
+                            </select>
                           </td>
                           <td className="py-3 px-4">
                             <label className="flex items-center gap-1 text-xs cursor-pointer">
@@ -325,9 +348,6 @@ function AssignmentsContent() {
                           <td className="py-3 px-4">{getBdmName(a.user_id)}</td>
                           <td className="py-3 px-4 font-medium">{getAccountName(a.account_id)}</td>
                           <td className="py-3 px-4">{getProgramName(a.program_id)}</td>
-                          <td className="py-3 px-4 text-text-secondary text-xs">
-                            {a.contact?.primary_contact_name ?? <span className="italic">—</span>}
-                          </td>
                           <td className="py-3 px-4">
                             <span
                               className={`inline-block px-2 py-1 rounded text-xs font-medium ${

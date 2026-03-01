@@ -45,10 +45,16 @@ export default function LoginPage() {
       {/* Left decorative panel */}
       <div className="hidden lg:flex flex-col justify-between w-2/5 bg-sidebar p-12">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-sidebar-active flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-sm font-bold leading-none">W</span>
-          </div>
-          <span className="text-sidebar-text font-semibold tracking-wide">Deminder</span>
+          {branding.logo_light_url ? (
+            <img src={branding.logo_light_url} alt="Logo" className="h-10 w-auto" />
+          ) : (
+            <>
+              <div className="w-8 h-8 rounded-lg bg-sidebar-active flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm font-bold leading-none">W</span>
+              </div>
+              <span className="text-sidebar-text font-semibold tracking-wide">Deminder</span>
+            </>
+          )}
         </div>
         <div>
           <p className="text-sidebar-text/60 text-xs uppercase tracking-widest mb-3">Platform</p>
@@ -64,8 +70,8 @@ export default function LoginPage() {
 
       {/* Right — form */}
       <div className="flex flex-1 flex-col items-center justify-center p-6 sm:p-10">
-        {/* Logo — always visible on right panel (both mobile and desktop) */}
-        <div className="flex flex-col items-center mb-8">
+        {/* Logo — visible on mobile only (desktop shows it on left panel) */}
+        <div className="lg:hidden flex flex-col items-center mb-8">
           {branding.logo_light_url ? (
             <img src={branding.logo_light_url} alt="Logo" className="h-10 w-auto mb-3" />
           ) : (

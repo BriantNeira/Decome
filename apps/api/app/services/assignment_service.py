@@ -119,6 +119,8 @@ async def update_assignment(
     assignment_id: uuid.UUID,
     is_active: bool | None = None,
     user_id: uuid.UUID | None = None,
+    account_id: uuid.UUID | None = None,
+    program_id: uuid.UUID | None = None,
 ) -> Assignment:
     assignment = await _load_assignment(db, assignment_id)
 
@@ -141,6 +143,22 @@ async def update_assignment(
                 detail="User must have BDM role",
             )
         assignment.user_id = user_id
+
+    if account_id is not None:
+        acct_result = await db.execute(select(Account).where(Account.id == account_id))
+        if not acct_result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Account not found"
+            )
+        assignment.account_id = account_id
+
+    if program_id is not None:
+        prog_result = await db.execute(select(Program).where(Program.id == program_id))
+        if not prog_result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Program not found"
+            )
+        assignment.program_id = program_id
 
     await db.flush()
     return await _load_assignment(db, assignment_id)

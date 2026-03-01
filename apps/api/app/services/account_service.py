@@ -52,13 +52,14 @@ async def get_account(db: AsyncSession, account_id: str) -> Account:
 async def get_account_detail(db: AsyncSession, account_id: str) -> Account:
     """Get account with all related assignments, contacts, and notes."""
     from app.models.account_note import AccountNote
+    from app.models.contact import Contact
 
     result = await db.execute(
         select(Account)
         .options(
             selectinload(Account.assignments).selectinload(Assignment.program),
             selectinload(Account.assignments).selectinload(Assignment.user),
-            selectinload(Account.contacts),
+            selectinload(Account.contacts).selectinload(Contact.programs),
             selectinload(Account.notes).selectinload(AccountNote.author),
         )
         .where(Account.id == account_id)

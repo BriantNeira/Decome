@@ -13,6 +13,8 @@ class AssignmentCreate(BaseModel):
 class AssignmentUpdate(BaseModel):
     is_active: bool | None = None
     user_id: uuid.UUID | None = None
+    account_id: uuid.UUID | None = None
+    program_id: uuid.UUID | None = None
 
 
 class AssignmentRead(BaseModel):

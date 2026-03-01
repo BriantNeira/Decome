@@ -30,6 +30,8 @@ function ReminderTypesContent() {
     color: "#9AAE2F",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { showToast, ToastComponent } = useToast();
 
   useEffect(() => {
@@ -65,6 +67,20 @@ function ReminderTypesContent() {
       showToast(parseApiError(err, "Failed to create reminder type"), "error");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setDeleting(true);
+    try {
+      await api.delete(`/reminder-types/${id}`);
+      showToast("Reminder type deleted", "success");
+      setDeleteConfirmId(null);
+      await loadTypes();
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to delete reminder type"), "error");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -167,7 +183,40 @@ function ReminderTypesContent() {
                 </tr>
               </thead>
               <tbody>
-                {types.map((rt) => (
+                {types.map((rt) =>
+                  deleteConfirmId === rt.id ? (
+                    <tr key={rt.id} className="border-b border-border bg-red-50">
+                      <td className="py-3 px-4">
+                        <span
+                          className="inline-block w-5 h-5 rounded-full border border-border"
+                          style={{ backgroundColor: rt.color ?? "#ccc" }}
+                        />
+                      </td>
+                      <td className="py-3 px-4 font-medium text-red-700">{rt.name}</td>
+                      <td colSpan={2} className="py-3 px-4">
+                        <p className="text-xs text-red-600 font-medium">
+                          ⚠️ Delete "{rt.name}"? This cannot be undone.
+                        </p>
+                      </td>
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleDelete(rt.id)}
+                            disabled={deleting}
+                            className="text-xs text-red-600 font-semibold hover:underline disabled:opacity-50"
+                          >
+                            {deleting ? "Deleting…" : "Confirm Delete"}
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirmId(null)}
+                            className="text-xs text-text-secondary hover:underline"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
                   <tr key={rt.id} className="border-b border-border hover:bg-bg">
                     <td className="py-3 px-4">
                       <span
@@ -187,15 +236,24 @@ function ReminderTypesContent() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => handleToggleActive(rt)}
-                        className="text-xs text-text-secondary hover:text-text-primary underline"
-                      >
-                        {rt.is_active ? "Deactivate" : "Activate"}
-                      </button>
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={() => handleToggleActive(rt)}
+                          className="text-xs text-text-secondary hover:text-text-primary underline"
+                        >
+                          {rt.is_active ? "Deactivate" : "Activate"}
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirmId(rt.id)}
+                          className="text-xs text-red-500 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                )}
               </tbody>
             </table>
           </div>

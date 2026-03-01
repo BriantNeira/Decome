@@ -53,15 +53,6 @@ async def get_account(
     # Build enriched assignments
     assignments = []
     for a in account.assignments:
-        contact = None
-        if a.contact:
-            contact = ContactSummary(
-                id=a.contact.id,
-                primary_contact_name=a.contact.primary_contact_name,
-                primary_contact_email=a.contact.primary_contact_email,
-                decision_maker_name=a.contact.decision_maker_name,
-                decision_maker_email=a.contact.decision_maker_email,
-            )
         assignments.append(AssignmentSummary(
             id=a.id,
             user_id=a.user_id,
@@ -70,8 +61,10 @@ async def get_account(
             program_id=a.program_id,
             program_name=a.program.name if a.program else None,
             is_active=a.is_active,
-            contact=contact,
         ))
+
+    # Build contacts from account.contacts (Contact N:M Program already loaded)
+    contacts = [ContactSummary.model_validate(c) for c in account.contacts]
 
     # Build notes
     notes = []
@@ -93,6 +86,7 @@ async def get_account(
         is_active=account.is_active,
         logo_url=account.logo_url,
         assignments=assignments,
+        contacts=contacts,
         notes=notes,
     )
 
