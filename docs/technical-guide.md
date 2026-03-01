@@ -51,7 +51,8 @@ make migrate  # Run pending Alembic migrations
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | API base URL |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | API base URL (used by the browser) |
+| `BACKEND_URL` | `http://api:8000` | API base URL for server-side Next.js rewrites (internal Docker network) |
 | `WATCHPACK_POLLING` | `true` | Enable polling for file watching (required on Windows) |
 
 ## Database Schema (Phase 1)
@@ -116,6 +117,9 @@ make test          # All tests
 make test-api      # Backend tests only (pytest)
 make test-web      # Frontend tests only (jest)
 ```
+
+Backend: 35 pytest tests across auth, RBAC, branding, and audit modules.
+Frontend: 15 Jest + RTL tests covering ThemeToggle, AuthGuard, RoleGuard, login page, and API interceptor.
 
 Backend test database: `decome_test` (created automatically).
 
