@@ -124,7 +124,7 @@ function RemindersContent() {
 
   useEffect(() => {
     loadReferenceData();
-  }, []);
+  }, [isAdmin]); // re-run when auth resolves so BDM-user fetch fires for admin
 
   useEffect(() => {
     loadReminders();
