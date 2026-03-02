@@ -17,6 +17,7 @@ const NAV_GROUPS = [
     label: "My Work",
     items: [
       { href: "/dashboard/my-assignments",        label: "My Assignments", roles: ["bdm"] },
+      { href: "/dashboard/admin/programs",        label: "Programs",       roles: ["bdm"] },
       { href: "/dashboard/reminders",             label: "Reminders",      roles: ["bdm"] },
       { href: "/dashboard/reminders/calendar",    label: "Calendar",       roles: ["bdm"] },
     ],
