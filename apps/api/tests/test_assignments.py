@@ -4,6 +4,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Account, Program, Assignment, User
+from tests.conftest import _create_user
 
 
 async def create_test_account(db: AsyncSession) -> Account:
@@ -221,3 +222,67 @@ async def test_active_assignment_visible_to_bdm(
     items = res.json()["items"]
     assignment_ids = [item["id"] for item in items]
     assert str(assignment.id) in assignment_ids
+
+
+@pytest.mark.asyncio
+async def test_duplicate_program_account_forbidden(
+    client: AsyncClient, admin_token: str, bdm_user: User, db: AsyncSession
+):
+    """Cannot create two assignments with the same program and account but different BDMs"""
+    account = await create_test_account(db)
+    program = await create_test_program(db)
+
+    # Create first assignment: Program A + Account 1 + BDM 1
+    payload1 = {
+        "user_id": str(bdm_user.id),
+        "account_id": str(account.id),
+        "program_id": str(program.id),
+    }
+    res1 = await client.post("/api/assignments", json=payload1, headers={"Authorization": f"Bearer {admin_token}"})
+    assert res1.status_code == 201
+
+    # Create a second BDM user
+    bdm_user2 = await _create_user(db, f"bdm2_{uuid_lib.uuid4()}@test.com", "bdm")
+
+    # Try to create second assignment with same program + account but different BDM
+    payload2 = {
+        "user_id": str(bdm_user2.id),
+        "account_id": str(account.id),
+        "program_id": str(program.id),
+    }
+    res2 = await client.post("/api/assignments", json=payload2, headers={"Authorization": f"Bearer {admin_token}"})
+    assert res2.status_code == 409
+    data = res2.json()
+    assert "program is already assigned" in data["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_same_program_different_account_allowed(
+    client: AsyncClient, admin_token: str, bdm_user: User, db: AsyncSession
+):
+    """Same program can be assigned to different BDMs if they are in different accounts"""
+    account1 = await create_test_account(db)
+    account2 = await create_test_account(db)
+    program = await create_test_program(db)
+
+    # Create first assignment: Program A + Account 1 + BDM 1
+    payload1 = {
+        "user_id": str(bdm_user.id),
+        "account_id": str(account1.id),
+        "program_id": str(program.id),
+    }
+    res1 = await client.post("/api/assignments", json=payload1, headers={"Authorization": f"Bearer {admin_token}"})
+    assert res1.status_code == 201
+
+    # Create a second BDM user
+    bdm_user2 = await _create_user(db, f"bdm2_{uuid_lib.uuid4()}@test.com", "bdm")
+
+    # Create second assignment: same Program A + different Account 2 + different BDM
+    # This SHOULD be allowed
+    payload2 = {
+        "user_id": str(bdm_user2.id),
+        "account_id": str(account2.id),
+        "program_id": str(program.id),
+    }
+    res2 = await client.post("/api/assignments", json=payload2, headers={"Authorization": f"Bearer {admin_token}"})
+    assert res2.status_code == 201

@@ -20,9 +20,11 @@ async def test_bdm_cannot_list_users(client: AsyncClient, bdm_token: str):
 
 
 @pytest.mark.asyncio
-async def test_director_cannot_list_users(client: AsyncClient, director_token: str):
+async def test_director_can_list_users(client: AsyncClient, director_token: str):
+    """Director can list users (needed for Assignments page BDM dropdown)"""
     res = await client.get("/api/users", headers={"Authorization": f"Bearer {director_token}"})
-    assert res.status_code == 403
+    assert res.status_code == 200
+    assert "items" in res.json()
 
 
 @pytest.mark.asyncio

@@ -24,7 +24,7 @@ async def list_users(
     limit: int = 50,
     role: str | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin")),
+    current_user: User = Depends(require_roles("admin", "director")),
 ):
     users, total = await user_service.list_users(db, skip=skip, limit=limit, role=role)
     return UserListResponse(

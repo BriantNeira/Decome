@@ -30,7 +30,7 @@ async def list_programs(
     search: str | None = None,
     account_id: uuid.UUID | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin")),
+    current_user: User = Depends(require_roles("admin", "bdm", "director")),
 ):
     programs, total = await program_service.list_programs(
         db, skip=skip, limit=limit, search=search, account_id=account_id
@@ -44,7 +44,7 @@ async def list_programs(
 async def get_program(
     program_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin")),
+    current_user: User = Depends(require_roles("admin", "bdm", "director")),
 ):
     program = await program_service.get_program(db, program_id)
     return ProgramRead.model_validate(program)

@@ -18,10 +18,9 @@ class Assignment(Base):
     __tablename__ = "assignments"
     __table_args__ = (
         UniqueConstraint(
-            "user_id",
-            "account_id",
             "program_id",
-            name="uq_assignment_user_account_program",
+            "account_id",
+            name="uq_assignment_program_account",
         ),
     )
 

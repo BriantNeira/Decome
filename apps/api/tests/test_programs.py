@@ -21,10 +21,13 @@ async def test_list_programs_admin(client: AsyncClient, admin_token: str):
 
 
 @pytest.mark.asyncio
-async def test_list_programs_bdm_forbidden(client: AsyncClient, bdm_token: str):
-    """BDM cannot list programs"""
+async def test_list_programs_bdm_allowed(client: AsyncClient, bdm_token: str):
+    """BDM can list programs (read-only access)"""
     res = await client.get("/api/programs", headers={"Authorization": f"Bearer {bdm_token}"})
-    assert res.status_code == 403
+    assert res.status_code == 200
+    data = res.json()
+    assert "items" in data
+    assert "total" in data
 
 
 @pytest.mark.asyncio

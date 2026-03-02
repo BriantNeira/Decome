@@ -27,7 +27,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/dashboard/admin/accounts",        label: "Accounts",       roles: ["admin", "director"] },
       { href: "/dashboard/admin/contacts",        label: "Contacts",       roles: ["admin", "bdm"] },
-      { href: "/dashboard/admin/programs",        label: "Programs",       roles: ["admin"] },
+      { href: "/dashboard/admin/programs",        label: "Programs",       roles: ["admin", "director"] },
       { href: "/dashboard/reminders",             label: "Reminders",      roles: ["admin"] },
       { href: "/dashboard/reminders/calendar",    label: "Calendar",       roles: ["admin"] },
     ],
@@ -36,7 +36,7 @@ const NAV_GROUPS = [
     label: "Settings",
     items: [
       { href: "/dashboard/admin/users",          label: "Users",          roles: ["admin"] },
-      { href: "/dashboard/admin/assignments",    label: "Assignments",    roles: ["admin"] },
+      { href: "/dashboard/admin/assignments",    label: "Assignments",    roles: ["admin", "director"] },
       { href: "/dashboard/admin/reminder-types", label: "Reminder Types", roles: ["admin"] },
       { href: "/dashboard/admin/custom-fields",  label: "Custom Fields",  roles: ["admin"] },
       { href: "/dashboard/admin/branding",           label: "Branding",       roles: ["admin"] },
