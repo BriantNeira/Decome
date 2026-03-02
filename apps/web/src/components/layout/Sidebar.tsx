@@ -39,8 +39,9 @@ const NAV_GROUPS = [
       { href: "/dashboard/admin/assignments",    label: "Assignments",    roles: ["admin"] },
       { href: "/dashboard/admin/reminder-types", label: "Reminder Types", roles: ["admin"] },
       { href: "/dashboard/admin/custom-fields",  label: "Custom Fields",  roles: ["admin"] },
-      { href: "/dashboard/admin/branding",       label: "Branding",       roles: ["admin"] },
-      { href: "/dashboard/settings",             label: "My Settings",   roles: ["admin", "bdm", "director"] },
+      { href: "/dashboard/admin/branding",           label: "Branding",       roles: ["admin"] },
+      { href: "/dashboard/admin/email-settings",  label: "Email Settings", roles: ["admin"] },
+      { href: "/dashboard/settings",              label: "My Settings",    roles: ["admin", "bdm", "director"] },
     ],
   },
 ];

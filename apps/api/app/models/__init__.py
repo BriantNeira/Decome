@@ -10,6 +10,8 @@ from app.models.contact import Contact, contact_programs
 from app.models.reminder_type import ReminderType
 from app.models.custom_field import CustomFieldDefinition, CustomFieldValue
 from app.models.reminder import Reminder
+from app.models.email_config import EmailConfig
+from app.models.email_alert_log import EmailAlertLog
 
 __all__ = [
     "Role",
@@ -26,4 +28,6 @@ __all__ = [
     "CustomFieldDefinition",
     "CustomFieldValue",
     "Reminder",
+    "EmailConfig",
+    "EmailAlertLog",
 ]
