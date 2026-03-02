@@ -313,3 +313,21 @@ async def test_run_manual_endpoint(
     data = res.json()
     assert "sent" in data
     assert "failed" in data
+
+
+@pytest.mark.asyncio
+async def test_alert_overdue_due_today(
+    db: AsyncSession, admin_user: User, bdm_user: User
+):
+    """Overdue alert fires for a reminder due exactly TODAY (start_date == today)."""
+    await _activate_config(db, admin_user.id)
+    account = await _make_account(db)
+    today = datetime.date.today()
+    await _make_reminder(db, user_id=bdm_user.id, account_id=account.id, start_date=today)
+
+    with patch("app.services.email_service.send_alert_email", new_callable=AsyncMock) as mock_send:
+        result = await alert_service.run_alert_checks(db)
+        await db.commit()
+
+    assert result["sent"] >= 1, "A reminder due today must trigger an overdue alert"
+    assert mock_send.called

@@ -92,7 +92,7 @@ async def run_alert_checks(db: AsyncSession) -> dict:
     Run all three alert types:
       - 7-day: start_date = today+7, status open/in_progress, no prior 7_day log
       - 1-day: start_date = tomorrow, status open/in_progress, no prior 1_day log
-      - overdue: start_date < today, status open/in_progress, no overdue log TODAY
+      - overdue: start_date <= today, status open/in_progress, no overdue log TODAY
 
     Returns counts: {"sent": N, "failed": N, "skipped": reason|None}
     """
@@ -160,7 +160,7 @@ async def _get_eligible(
 async def _get_overdue_not_sent_today(
     db: AsyncSession, today: datetime.date
 ) -> list[Reminder]:
-    """Overdue reminders that haven't received an 'overdue' alert today."""
+    """Overdue reminders (due today or earlier) that haven't received an 'overdue' alert today."""
     already_sent_today = (
         select(EmailAlertLog.id).where(
             EmailAlertLog.reminder_id == Reminder.id,
@@ -171,7 +171,7 @@ async def _get_overdue_not_sent_today(
     stmt = (
         select(Reminder)
         .where(
-            Reminder.start_date < today,
+            Reminder.start_date <= today,  # include today (due today = needs alert)
             Reminder.status.in_(["open", "in_progress"]),
             ~exists(already_sent_today),
         )
