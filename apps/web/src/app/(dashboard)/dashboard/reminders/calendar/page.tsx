@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import api from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/Toast";
-import { CalendarReminder, Account } from "@/types/masterdata";
+import { CalendarReminder, Account, ReminderType } from "@/types/masterdata";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 type ViewType = "month" | "week";
@@ -86,11 +86,15 @@ function CalendarContent() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [quickAddDate, setQuickAddDate] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [reminderTypes, setReminderTypes] = useState<ReminderType[]>([]);
 
-  // Load accounts for quick-add form
+  // Load reference data for quick-add form
   useEffect(() => {
     api.get<{ items: Account[]; total: number }>("/accounts?limit=500")
       .then(r => setAccounts(r.data.items.filter(a => a.is_active)))
+      .catch(() => {});
+    api.get<{ items: ReminderType[]; total: number }>("/reminder-types?limit=100")
+      .then(r => setReminderTypes(r.data.items.filter(t => t.is_active)))
       .catch(() => {});
   }, []);
 
@@ -296,6 +300,7 @@ function CalendarContent() {
               quickAddDate={quickAddDate}
               setQuickAddDate={setQuickAddDate}
               accounts={accounts}
+              reminderTypes={reminderTypes}
               userId={user?.id ?? ""}
               onReload={load}
               showToast={showToast}
@@ -313,6 +318,7 @@ function CalendarContent() {
               quickAddDate={quickAddDate}
               setQuickAddDate={setQuickAddDate}
               accounts={accounts}
+              reminderTypes={reminderTypes}
               userId={user?.id ?? ""}
               onReload={load}
               showToast={showToast}
@@ -335,6 +341,7 @@ interface PanelProps {
   quickAddDate: string | null;
   setQuickAddDate: (d: string | null) => void;
   accounts: Account[];
+  reminderTypes: ReminderType[];
   userId: string;
   onReload: () => void;
   showToast: (msg: string, type: "success" | "error") => void;
@@ -455,6 +462,7 @@ function MonthGrid({
           <QuickAddPanel
             date={quickAddDate}
             accounts={accounts}
+            reminderTypes={reminderTypes}
             userId={userId}
             onCancel={() => setQuickAddDate(null)}
             onSaved={() => { setQuickAddDate(null); onReload(); }}
@@ -591,6 +599,7 @@ function WeekGrid({
           <QuickAddPanel
             date={quickAddDate}
             accounts={accounts}
+            reminderTypes={reminderTypes}
             userId={userId}
             onCancel={() => setQuickAddDate(null)}
             onSaved={() => { setQuickAddDate(null); onReload(); }}
@@ -614,10 +623,11 @@ function WeekGrid({
 // QUICK ADD PANEL
 // ═══════════════════════════════════════════════════════════════════════════
 function QuickAddPanel({
-  date, accounts, userId, onCancel, onSaved, showToast,
+  date, accounts, reminderTypes, userId, onCancel, onSaved, showToast,
 }: {
   date: string;
   accounts: Account[];
+  reminderTypes: ReminderType[];
   userId: string;
   onCancel: () => void;
   onSaved: () => void;
@@ -625,6 +635,7 @@ function QuickAddPanel({
 }) {
   const [title, setTitle] = useState("");
   const [accountId, setAccountId] = useState("");
+  const [typeId, setTypeId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -641,6 +652,7 @@ function QuickAddPanel({
         title: title.trim(),
         start_date: date,
         user_id: userId,
+        type_id: typeId ? parseInt(typeId) : null,
       });
       showToast("Reminder created", "success");
       onSaved();
@@ -650,6 +662,9 @@ function QuickAddPanel({
       setSaving(false);
     }
   }
+
+  // Resolve selected type color for display
+  const selectedType = reminderTypes.find(t => String(t.id) === typeId);
 
   return (
     <div>
@@ -689,6 +704,29 @@ function QuickAddPanel({
               <option key={a.id} value={a.id}>{a.name}</option>
             ))}
           </select>
+        </div>
+
+        {/* Type */}
+        <div>
+          <label className="block text-xs font-medium text-text-secondary mb-1">Type</label>
+          <div className="flex items-center gap-1.5">
+            {selectedType?.color && (
+              <span
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: selectedType.color }}
+              />
+            )}
+            <select
+              value={typeId}
+              onChange={e => setTypeId(e.target.value)}
+              className="flex-1 rounded border border-border bg-surface text-text-primary px-2 py-1.5 text-xs"
+            >
+              <option value="">— None —</option>
+              {reminderTypes.map(t => (
+                <option key={t.id} value={String(t.id)}>{t.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Title */}

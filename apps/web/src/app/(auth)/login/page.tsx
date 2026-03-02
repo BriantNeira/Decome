@@ -44,16 +44,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-bg flex">
       {/* Left decorative panel */}
       <div className="hidden lg:flex flex-col justify-between w-2/5 bg-sidebar p-12">
-        <div className="flex items-center gap-3">
-          {branding.logo_light_url ? (
-            <img src={branding.logo_light_url} alt="Logo" className="h-9 w-auto max-w-[36px] object-contain flex-shrink-0" />
-          ) : (
-            <div className="w-8 h-8 rounded-lg bg-sidebar-active flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-sm font-bold leading-none">W</span>
-            </div>
-          )}
-          <span className="text-sidebar-text font-semibold tracking-wide">Deminder</span>
-        </div>
+        <div />
         <div>
           <p className="text-sidebar-text/60 text-xs uppercase tracking-widest mb-3">Platform</p>
           <h2 className="text-sidebar-text text-3xl font-bold leading-snug drop-shadow-sm">
