@@ -73,6 +73,32 @@ async def setup_db():
                 session.add(Role(name=role_name, description=role_name))
         await session.commit()
 
+    # Seed programs (default N/A)
+    async with TestSession() as session:
+        from sqlalchemy import select
+        from app.models.program import Program
+        result = await session.execute(select(Program).where(Program.name == "N/A"))
+        if not result.scalar_one_or_none():
+            session.add(Program(name="N/A", is_default=True, is_active=True))
+        await session.commit()
+
+    # Seed reminder types
+    async with TestSession() as session:
+        from sqlalchemy import select
+        from app.models.reminder_type import ReminderType
+        reminder_types = [
+            ("Follow-up Call", "#FF6B6B"),
+            ("Payment Review", "#4ECDC4"),
+            ("Contract Renewal", "#FFE66D"),
+            ("Courtesy Visit", "#95E1D3"),
+            ("Other", "#C7CEEA"),
+        ]
+        for name, color in reminder_types:
+            result = await session.execute(select(ReminderType).where(ReminderType.name == name))
+            if not result.scalar_one_or_none():
+                session.add(ReminderType(name=name, color=color, is_active=True))
+        await session.commit()
+
     yield
 
     async with test_engine.begin() as conn:

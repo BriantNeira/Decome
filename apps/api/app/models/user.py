@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 if TYPE_CHECKING:
+    from app.models.assignment import Assignment
     from app.models.role import Role
 
 
@@ -40,6 +41,7 @@ class User(Base):
 
     # Relationships
     role: Mapped["Role"] = relationship(back_populates="users", lazy="joined")
+    assignments: Mapped[list["Assignment"]] = relationship(lazy="select", back_populates="user")
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email}>"
