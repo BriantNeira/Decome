@@ -16,9 +16,29 @@ import {
   ContactSummary,
   CustomFieldDefinition,
   CustomFieldValue,
+  Reminder,
 } from "@/types/masterdata";
 
-type Tab = "overview" | "logo" | "notes" | "contacts" | "custom-fields";
+type Tab = "overview" | "logo" | "notes" | "contacts" | "custom-fields" | "activity";
+
+interface RemindersListResponse {
+  items: Reminder[];
+  total: number;
+}
+
+const REMINDER_STATUS_STYLES: Record<string, string> = {
+  open: "bg-blue-100 text-blue-800",
+  in_progress: "bg-yellow-100 text-yellow-800",
+  completed: "bg-green-100 text-green-800",
+  cancelled: "bg-gray-100 text-gray-600",
+};
+
+const REMINDER_STATUS_LABELS: Record<string, string> = {
+  open: "Open",
+  in_progress: "In Progress",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
 
 function AccountDetailContent() {
   const params = useParams();
@@ -50,10 +70,18 @@ function AccountDetailContent() {
   const [cfEditData, setCfEditData] = useState<Record<number, string>>({});
   const [cfSaving, setCfSaving] = useState(false);
 
+  // Activity tab — reminders for this account
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [remindersLoading, setRemindersLoading] = useState(false);
+
   useEffect(() => {
     loadAccount();
     loadCustomFields();
   }, [accountId]);
+
+  useEffect(() => {
+    if (activeTab === "activity") loadReminders();
+  }, [activeTab]);
 
   async function loadAccount() {
     try {
@@ -81,6 +109,20 @@ function AccountDetailContent() {
       setCfValues(valMap);
     } catch {
       // non-critical
+    }
+  }
+
+  async function loadReminders() {
+    try {
+      setRemindersLoading(true);
+      const res = await api.get<RemindersListResponse>(
+        `/reminders?account_id=${accountId}&limit=100`
+      );
+      setReminders(res.data.items);
+    } catch {
+      // non-critical
+    } finally {
+      setRemindersLoading(false);
     }
   }
 
@@ -273,6 +315,7 @@ function AccountDetailContent() {
     { key: "logo", label: "Logo" },
     { key: "notes", label: `Notes (${account.notes.length})` },
     { key: "contacts", label: `Contacts (${account.contacts?.length ?? 0})` },
+    { key: "activity", label: "Activity" },
     { key: "custom-fields", label: "Custom Fields" },
   ];
 
@@ -513,12 +556,20 @@ function AccountDetailContent() {
             <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">
               Contacts ({account.contacts?.length ?? 0})
             </h2>
-            <Link
-              href={`/dashboard/admin/contacts?account_id=${accountId}`}
-              className="text-sm text-brand hover:underline font-medium"
-            >
-              Manage Contacts &rarr;
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                href={`/dashboard/admin/contacts?account_id=${accountId}&add=true`}
+                className="text-sm text-brand hover:underline font-medium"
+              >
+                + Add Contact
+              </Link>
+              <Link
+                href={`/dashboard/admin/contacts?account_id=${accountId}`}
+                className="text-sm text-text-secondary hover:underline"
+              >
+                Manage All &rarr;
+              </Link>
+            </div>
           </div>
           {!account.contacts || account.contacts.length === 0 ? (
             <p className="text-text-secondary text-sm">No contacts for this account.</p>
@@ -545,6 +596,86 @@ function AccountDetailContent() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Tab: Activity */}
+      {activeTab === "activity" && (
+        <Card padding="md">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">
+              Reminders ({reminders.length})
+            </h2>
+            <button
+              onClick={loadReminders}
+              className="text-xs text-text-secondary hover:text-text-primary transition-colors"
+            >
+              ↻ Refresh
+            </button>
+          </div>
+          {remindersLoading ? (
+            <p className="text-sm text-text-secondary">Loading activity…</p>
+          ) : reminders.length === 0 ? (
+            <p className="text-sm text-text-secondary">No reminders for this account.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 px-3 font-medium text-text-secondary">Status</th>
+                    <th className="text-left py-2.5 px-3 font-medium text-text-secondary">Title</th>
+                    <th className="text-left py-2.5 px-3 font-medium text-text-secondary">BDM</th>
+                    <th className="text-left py-2.5 px-3 font-medium text-text-secondary">Program</th>
+                    <th className="text-left py-2.5 px-3 font-medium text-text-secondary">Due Date</th>
+                    <th className="text-left py-2.5 px-3 font-medium text-text-secondary">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reminders.map((r) => (
+                    <tr key={r.id} className="border-b border-border hover:bg-bg">
+                      <td className="py-2.5 px-3">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium ${
+                            REMINDER_STATUS_STYLES[r.status] ?? "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {REMINDER_STATUS_LABELS[r.status] ?? r.status}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-medium text-text-primary max-w-[200px] truncate">
+                        {r.title}
+                      </td>
+                      <td className="py-2.5 px-3 text-text-secondary text-xs">
+                        {r.user_name ?? "—"}
+                      </td>
+                      <td className="py-2.5 px-3 text-text-secondary text-xs">
+                        {r.program_name ?? "—"}
+                      </td>
+                      <td className="py-2.5 px-3 text-text-secondary text-xs whitespace-nowrap">
+                        {r.start_date}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        {r.type_name ? (
+                          <span
+                            className="inline-block px-2 py-0.5 rounded text-[10px] font-medium"
+                            style={{
+                              backgroundColor: r.type_color ? `${r.type_color}20` : undefined,
+                              color: r.type_color ?? undefined,
+                              border: r.type_color ? `1px solid ${r.type_color}40` : undefined,
+                            }}
+                          >
+                            {r.type_name}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-text-secondary">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </Card>

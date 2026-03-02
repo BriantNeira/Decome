@@ -38,6 +38,8 @@ function EmailSettingsContent() {
   const [logsTotal, setLogsTotal] = useState(0);
   const [logsLoading, setLogsLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
+  const [retryingId, setRetryingId] = useState<number | null>(null);
+  const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
 
   // ── Boot ──────────────────────────────────────────────────────────────
   useEffect(() => { loadConfig(); }, []);
@@ -125,6 +127,19 @@ function EmailSettingsContent() {
       showToast(parseApiError(err, "Failed to run alerts"), "error");
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function handleRetry(logId: number) {
+    setRetryingId(logId);
+    try {
+      await api.post(`/email-config/logs/${logId}/retry`);
+      showToast("Alert retried successfully", "success");
+      await loadLogs();
+    } catch (err: any) {
+      showToast(parseApiError(err, "Retry failed"), "error");
+    } finally {
+      setRetryingId(null);
     }
   }
 
@@ -349,20 +364,42 @@ function EmailSettingsContent() {
                         </td>
                         <td className="py-3 px-4 text-text-secondary">{log.sent_to}</td>
                         <td className="py-3 px-4">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                              log.status === "sent"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                            title={log.error_message ?? undefined}
-                          >
-                            {log.status === "sent" ? "✓ Sent" : "✗ Failed"}
-                          </span>
-                          {log.error_message && (
-                            <span className="ml-2 text-xs text-red-500 truncate max-w-[160px] inline-block align-middle">
-                              {log.error_message}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                                log.status === "sent"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {log.status === "sent" ? "✓ Sent" : "✗ Failed"}
                             </span>
+                            {log.status === "failed" && (
+                              <button
+                                onClick={() => handleRetry(log.id)}
+                                disabled={retryingId === log.id}
+                                className="text-xs text-brand hover:underline font-medium disabled:opacity-50"
+                              >
+                                {retryingId === log.id ? "Retrying…" : "Retry"}
+                              </button>
+                            )}
+                          </div>
+                          {log.error_message && (
+                            <div className="mt-1">
+                              <button
+                                onClick={() =>
+                                  setExpandedLogId(expandedLogId === log.id ? null : log.id)
+                                }
+                                className="text-[10px] text-red-500 hover:underline"
+                              >
+                                {expandedLogId === log.id ? "Hide error ▲" : "Show error ▼"}
+                              </button>
+                              {expandedLogId === log.id && (
+                                <p className="mt-1 text-xs text-red-700 bg-red-50 rounded p-2 break-all border border-red-200">
+                                  {log.error_message}
+                                </p>
+                              )}
+                            </div>
                           )}
                         </td>
                       </tr>

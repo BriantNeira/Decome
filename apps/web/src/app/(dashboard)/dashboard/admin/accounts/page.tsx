@@ -127,7 +127,10 @@ function AccountsContent() {
                 {accounts.map((account) => (
                   <tr key={account.id} className="border-b border-border hover:bg-bg">
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => router.push(`/dashboard/admin/accounts/${account.id}`)}
+                        className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
+                      >
                         {account.logo_url ? (
                           <img
                             src={account.logo_url}
@@ -141,8 +144,8 @@ function AccountsContent() {
                             </span>
                           </div>
                         )}
-                        <span className="font-medium">{account.name}</span>
-                      </div>
+                        <span className="font-medium text-brand hover:underline">{account.name}</span>
+                      </button>
                     </td>
                     <td className="py-3 px-4 text-text-secondary font-mono text-xs">{account.code || "—"}</td>
                     <td className="py-3 px-4">

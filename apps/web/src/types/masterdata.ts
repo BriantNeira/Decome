@@ -110,6 +110,7 @@ export interface CustomFieldValue {
 export interface Reminder {
   id: string;
   user_id: string;
+  user_name: string | null;
   account_id: string;
   account_name: string | null;
   program_id: string | null;

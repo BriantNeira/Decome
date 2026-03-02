@@ -6,12 +6,31 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import api from "@/lib/api";
+import api, { parseApiError } from "@/lib/api";
 import { QRCodeSVG } from "qrcode.react";
 
 export default function SettingsPage() {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
+
+  // Name editing
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState(user?.full_name || "");
+  const [savingName, setSavingName] = useState(false);
+
+  async function handleSaveName() {
+    setSavingName(true);
+    try {
+      await api.patch("/users/me", { full_name: newName.trim() });
+      showToast("Name updated", "success");
+      setEditingName(false);
+      window.location.reload();
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to update name"), "error");
+    } finally {
+      setSavingName(false);
+    }
+  }
 
   // 2FA state machine: idle | setup | enabling | done
   const [twoFAState, setTwoFAState] = useState<"idle" | "setup" | "enabling">("idle");
@@ -72,11 +91,40 @@ export default function SettingsPage() {
 
       {/* Profile */}
       <Card className="mb-4">
-        <h2 className="font-medium text-text-primary mb-3">Profile</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-medium text-text-primary">Profile</h2>
+          {!editingName && (
+            <button
+              onClick={() => { setNewName(user?.full_name || ""); setEditingName(true); }}
+              className="text-sm text-brand hover:underline"
+            >
+              Edit Name
+            </button>
+          )}
+        </div>
         <div className="space-y-2 text-sm">
-          <div className="flex gap-4">
-            <span className="text-text-secondary w-24">Name</span>
-            <span className="text-text-primary">{user?.full_name}</span>
+          <div className="flex gap-4 items-center">
+            <span className="text-text-secondary w-24 shrink-0">Name</span>
+            {editingName ? (
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
+                  className="flex-1 rounded border border-border bg-surface text-text-primary px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  autoFocus
+                />
+                <Button size="sm" variant="primary" loading={savingName} onClick={handleSaveName}>
+                  Save
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditingName(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <span className="text-text-primary">{user?.full_name}</span>
+            )}
           </div>
           <div className="flex gap-4">
             <span className="text-text-secondary w-24">Email</span>

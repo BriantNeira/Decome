@@ -179,6 +179,73 @@ async def _get_overdue_not_sent_today(
     return list((await db.execute(stmt)).scalars().all())
 
 
+async def retry_alert_log(db: AsyncSession, log_id: int) -> EmailAlertLog:
+    """
+    Retry a previously failed alert log entry.
+    Bypasses the 'already sent' check and sends directly to the reminder's BDM.
+    Creates a new EmailAlertLog entry for the retry attempt.
+    Raises HTTPException if log not found, not failed, or config not available.
+    """
+    from fastapi import HTTPException, status as http_status
+    from sqlalchemy.orm import selectinload
+
+    # Load the failed log with reminder relationship
+    log_result = await db.execute(
+        select(EmailAlertLog)
+        .options(selectinload(EmailAlertLog.reminder))
+        .where(EmailAlertLog.id == log_id)
+    )
+    log = log_result.scalar_one_or_none()
+    if not log:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Alert log not found")
+    if log.status != "failed":
+        raise HTTPException(status_code=http_status.HTTP_400_BAD_REQUEST, detail="Only failed alerts can be retried")
+
+    config = await get_email_config(db)
+    if not config or not config.smtp_host:
+        raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail="SMTP is not configured")
+
+    reminder = log.reminder
+    if not reminder:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Reminder no longer exists")
+
+    # Load user for reminder to get email
+    user_result = await db.execute(
+        select(Reminder)
+        .options(
+            selectinload(Reminder.user),
+            selectinload(Reminder.account),
+            selectinload(Reminder.reminder_type),
+        )
+        .where(Reminder.id == reminder.id)
+    )
+    reminder_full = user_result.scalar_one_or_none()
+    if not reminder_full:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Reminder not found")
+
+    user_email = reminder_full.user.email if reminder_full.user else None
+    if not user_email:
+        raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Reminder has no associated user email")
+
+    subject, html_body = email_service.build_alert_email(reminder_full, log.alert_type)
+    new_log = EmailAlertLog(
+        reminder_id=reminder.id,
+        alert_type=log.alert_type,
+        sent_to=user_email,
+        status="sent",
+    )
+    try:
+        await email_service.send_alert_email(config, to_email=user_email, subject=subject, html_body=html_body)
+        new_log.status = "sent"
+    except Exception as exc:
+        new_log.status = "failed"
+        new_log.error_message = str(exc)[:500]
+
+    db.add(new_log)
+    await db.flush()
+    return new_log
+
+
 async def _send_and_log(
     db: AsyncSession,
     reminder: Reminder,

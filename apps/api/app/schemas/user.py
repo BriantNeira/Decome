@@ -53,6 +53,11 @@ class UserCreate(BaseModel):
         return v
 
 
+class UserSelfUpdate(BaseModel):
+    """Schema for a user updating their own profile (name only — no role/status change)."""
+    full_name: str | None = None
+
+
 class UserListResponse(BaseModel):
     items: list[UserRead]
     total: int
