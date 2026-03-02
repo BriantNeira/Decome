@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import api, { parseApiError } from "@/lib/api";
-import { Contact, Program } from "@/types/masterdata";
+import { Contact, Program, CustomFieldDefinition, CustomFieldValue } from "@/types/masterdata";
 
 const TITLE_OPTIONS = ["Mr", "Mrs", "Miss", "Ms", "Dr"];
 
@@ -40,9 +40,17 @@ function ContactDetailContent() {
   });
   const [saving, setSaving] = useState(false);
 
+  // Custom fields
+  const [cfDefinitions, setCfDefinitions] = useState<CustomFieldDefinition[]>([]);
+  const [cfValues, setCfValues] = useState<Record<number, string>>({});
+  const [editingCF, setEditingCF] = useState(false);
+  const [cfEditData, setCfEditData] = useState<Record<number, string>>({});
+  const [cfSaving, setCfSaving] = useState(false);
+
   useEffect(() => {
     loadContact();
     loadPrograms();
+    loadCustomFields();
   }, [contactId]);
 
   async function loadContact() {
@@ -61,6 +69,23 @@ function ContactDetailContent() {
     try {
       const res = await api.get<ProgramsListResponse>("/programs?limit=500");
       setPrograms(res.data.items.filter((p) => p.is_active));
+    } catch {
+      // non-critical
+    }
+  }
+
+  async function loadCustomFields() {
+    try {
+      const [defsRes, valRes] = await Promise.all([
+        api.get<{ items: CustomFieldDefinition[] }>("/custom-fields/definitions?entity_type=contact"),
+        api.get<{ values: CustomFieldValue[] }>(`/custom-fields/values/contact/${contactId}`),
+      ]);
+      setCfDefinitions(defsRes.data.items.filter(d => d.is_active));
+      const valMap: Record<number, string> = {};
+      for (const v of valRes.data.values) {
+        valMap[v.definition_id] = v.value ?? "";
+      }
+      setCfValues(valMap);
     } catch {
       // non-critical
     }
@@ -102,6 +127,35 @@ function ContactDetailContent() {
     }
   }
 
+  function startEditCF() {
+    setCfEditData({ ...cfValues });
+    setEditingCF(true);
+  }
+
+  async function handleSaveCF() {
+    setCfSaving(true);
+    try {
+      const values = Object.entries(cfEditData).map(([defId, value]) => ({
+        definition_id: parseInt(defId),
+        value: value || null,
+      }));
+      // Also include definitions with no value yet (send null to clear/init)
+      for (const def of cfDefinitions) {
+        if (!(def.id in cfEditData)) {
+          values.push({ definition_id: def.id, value: null });
+        }
+      }
+      await api.put(`/custom-fields/values/contact/${contactId}`, { values });
+      showToast("Custom fields saved", "success");
+      setEditingCF(false);
+      await loadCustomFields();
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to save custom fields"), "error");
+    } finally {
+      setCfSaving(false);
+    }
+  }
+
   function toggleProgramId(list: string[], id: string): string[] {
     return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
   }
@@ -109,6 +163,64 @@ function ContactDetailContent() {
   function formatName(c: Contact): string {
     const parts = [c.title, c.first_name, c.last_name].filter(Boolean);
     return parts.join(" ") || "Unnamed Contact";
+  }
+
+  function renderCFInput(def: CustomFieldDefinition, value: string, onChange: (v: string) => void) {
+    switch (def.field_type) {
+      case "boolean":
+        return (
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={value === "true"}
+              onChange={e => onChange(e.target.checked ? "true" : "false")}
+              className="rounded"
+            />
+            <span className="text-text-primary">{def.field_name}</span>
+          </label>
+        );
+      case "dropdown":
+        return (
+          <select
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            className="w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm"
+          >
+            <option value="">—</option>
+            {(def.options?.choices ?? []).map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        );
+      case "date":
+        return (
+          <input
+            type="date"
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            className="w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm"
+          />
+        );
+      case "number":
+        return (
+          <input
+            type="number"
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            className="w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm"
+          />
+        );
+      default:
+        return (
+          <input
+            type="text"
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            placeholder={`Enter ${def.field_name.toLowerCase()}…`}
+            className="w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm"
+          />
+        );
+    }
   }
 
   if (loading) {
@@ -352,6 +464,65 @@ function ContactDetailContent() {
               <p className="text-text-secondary text-sm">No programs associated.</p>
             )}
           </Card>
+
+          {/* Custom Fields */}
+          {cfDefinitions.length > 0 && (
+            <Card padding="md">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">
+                  Custom Fields
+                </h2>
+                {!editingCF && (
+                  <Button onClick={startEditCF} variant="secondary" size="sm">
+                    Edit Fields
+                  </Button>
+                )}
+              </div>
+
+              {editingCF ? (
+                <div className="space-y-4">
+                  {cfDefinitions.map(def => (
+                    <div key={def.id}>
+                      {def.field_type !== "boolean" && (
+                        <label className="block text-sm font-medium text-text-primary mb-1">
+                          {def.field_name}
+                          {def.is_required && <span className="text-red-500 ml-1">*</span>}
+                        </label>
+                      )}
+                      {renderCFInput(
+                        def,
+                        cfEditData[def.id] ?? "",
+                        v => setCfEditData({ ...cfEditData, [def.id]: v })
+                      )}
+                    </div>
+                  ))}
+                  <div className="flex gap-2 pt-2">
+                    <Button onClick={handleSaveCF} loading={cfSaving} variant="primary" size="sm">
+                      Save Fields
+                    </Button>
+                    <Button onClick={() => setEditingCF(false)} variant="secondary" size="sm">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+                  {cfDefinitions.map(def => (
+                    <div key={def.id}>
+                      <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">
+                        {def.field_name}
+                      </p>
+                      <p className="text-sm text-text-primary">
+                        {def.field_type === "boolean"
+                          ? cfValues[def.id] === "true" ? "Yes" : "No"
+                          : cfValues[def.id] || "---"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
         </div>
       )}
 

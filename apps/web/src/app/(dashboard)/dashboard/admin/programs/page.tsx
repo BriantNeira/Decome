@@ -107,8 +107,8 @@ function ProgramsContent() {
       const payload: any = {
         name: editData.name,
         description: editData.description || null,
+        account_id: editData.account_id || null,
       };
-      if (editData.account_id) payload.account_id = editData.account_id;
       await api.patch(`/programs/${programId}`, payload);
       showToast("Program updated", "success");
       setEditingId(null);

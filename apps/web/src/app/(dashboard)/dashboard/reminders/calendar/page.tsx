@@ -6,7 +6,9 @@ import type { ReactNode } from "react";
 import { RoleGuard } from "@/components/layout/RoleGuard";
 import { Button } from "@/components/ui/Button";
 import api from "@/lib/api";
-import { CalendarReminder } from "@/types/masterdata";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/components/ui/Toast";
+import { CalendarReminder, Account } from "@/types/masterdata";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 type ViewType = "month" | "week";
@@ -68,6 +70,9 @@ interface Detail {
 // ═══════════════════════════════════════════════════════════════════════════
 function CalendarContent() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { showToast, ToastComponent } = useToast();
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todayStr = today.toISOString().slice(0, 10);
@@ -79,6 +84,15 @@ function CalendarContent() {
   const [reminders, setReminders] = useState<CalendarReminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<Detail | null>(null);
+  const [quickAddDate, setQuickAddDate] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+
+  // Load accounts for quick-add form
+  useEffect(() => {
+    api.get<{ items: Account[]; total: number }>("/accounts?limit=500")
+      .then(r => setAccounts(r.data.items.filter(a => a.is_active)))
+      .catch(() => {});
+  }, []);
 
   // ── Data fetching ─────────────────────────────────────────────────────
   const load = useCallback(async () => {
@@ -117,8 +131,13 @@ function CalendarContent() {
   useEffect(() => { load(); }, [load]);
 
   // ── Navigation ────────────────────────────────────────────────────────
-  function prev() {
+  function clearPanel() {
     setDetail(null);
+    setQuickAddDate(null);
+  }
+
+  function prev() {
+    clearPanel();
     if (view === "month") {
       if (month === 1) { setYear(y => y - 1); setMonth(12); }
       else setMonth(m => m - 1);
@@ -128,7 +147,7 @@ function CalendarContent() {
   }
 
   function next() {
-    setDetail(null);
+    clearPanel();
     if (view === "month") {
       if (month === 12) { setYear(y => y + 1); setMonth(1); }
       else setMonth(m => m + 1);
@@ -138,14 +157,14 @@ function CalendarContent() {
   }
 
   function goToday() {
-    setDetail(null);
+    clearPanel();
     setYear(today.getFullYear());
     setMonth(today.getMonth() + 1);
     setWeekStart(getWeekMonday(today));
   }
 
   function switchView(v: ViewType) {
-    setDetail(null);
+    clearPanel();
     setView(v);
     if (v === "week") {
       const pivot =
@@ -157,6 +176,11 @@ function CalendarContent() {
       setYear(weekStart.getFullYear());
       setMonth(weekStart.getMonth() + 1);
     }
+  }
+
+  function onDayClick(ds: string) {
+    setDetail(null);
+    setQuickAddDate(ds);
   }
 
   // ── Build lookup: occurrence_date → reminders[] ─────────────────────
@@ -265,9 +289,16 @@ function CalendarContent() {
               todayStr={todayStr}
               byDate={byDate}
               detail={detail}
-              setDetail={setDetail}
+              setDetail={(d) => { setQuickAddDate(null); setDetail(d); }}
               reminders={deduped}
               router={router}
+              onDayClick={onDayClick}
+              quickAddDate={quickAddDate}
+              setQuickAddDate={setQuickAddDate}
+              accounts={accounts}
+              userId={user?.id ?? ""}
+              onReload={load}
+              showToast={showToast}
             />
           ) : (
             <WeekGrid
@@ -275,15 +306,38 @@ function CalendarContent() {
               todayStr={todayStr}
               byDate={byDate}
               detail={detail}
-              setDetail={setDetail}
+              setDetail={(d) => { setQuickAddDate(null); setDetail(d); }}
               reminders={deduped}
               router={router}
+              onDayClick={onDayClick}
+              quickAddDate={quickAddDate}
+              setQuickAddDate={setQuickAddDate}
+              accounts={accounts}
+              userId={user?.id ?? ""}
+              onReload={load}
+              showToast={showToast}
             />
           )}
         </div>
       )}
+
+      <ToastComponent />
     </div>
   );
+}
+
+// ─── Shared right-panel props ─────────────────────────────────────────────
+interface PanelProps {
+  detail: Detail | null;
+  setDetail: (d: Detail | null) => void;
+  reminders: CalendarReminder[];
+  router: ReturnType<typeof useRouter>;
+  quickAddDate: string | null;
+  setQuickAddDate: (d: string | null) => void;
+  accounts: Account[];
+  userId: string;
+  onReload: () => void;
+  showToast: (msg: string, type: "success" | "error") => void;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -291,12 +345,12 @@ function CalendarContent() {
 // ═══════════════════════════════════════════════════════════════════════════
 function MonthGrid({
   year, month, todayStr, byDate, detail, setDetail, reminders, router,
+  onDayClick, quickAddDate, setQuickAddDate, accounts, userId, onReload, showToast,
 }: {
   year: number; month: number; todayStr: string;
   byDate: Record<string, CalendarReminder[]>;
-  detail: Detail | null; setDetail: (d: Detail | null) => void;
-  reminders: CalendarReminder[]; router: ReturnType<typeof useRouter>;
-}) {
+  onDayClick: (ds: string) => void;
+} & PanelProps) {
   const cells = getMonthCells(year, month);
   const weeks = cells.length / 7;
 
@@ -327,14 +381,16 @@ function MonthGrid({
             const isToday = ds === todayStr;
             const isWeekend = idx % 7 >= 5;
             const isLastCol = idx % 7 === 6;
+            const isSelected = ds === quickAddDate;
 
             return (
               <div
                 key={idx}
-                onClick={() => ds && router.push(`/dashboard/reminders?date=${ds}`)}
+                onClick={() => ds && onDayClick(ds)}
                 className={[
                   "border-r border-b border-border flex flex-col overflow-hidden transition-colors",
                   isLastCol ? "border-r-0" : "",
+                  isSelected ? "bg-sidebar-active/5 ring-1 ring-inset ring-sidebar-active/30" : "",
                   !day
                     ? "bg-gray-50 dark:bg-gray-900/20"
                     : isWeekend
@@ -395,6 +451,15 @@ function MonthGrid({
       <div className="w-60 xl:w-64 border-l border-border flex-shrink-0 overflow-y-auto p-4 bg-background">
         {detail ? (
           <ReminderDetail detail={detail} setDetail={setDetail} router={router} />
+        ) : quickAddDate ? (
+          <QuickAddPanel
+            date={quickAddDate}
+            accounts={accounts}
+            userId={userId}
+            onCancel={() => setQuickAddDate(null)}
+            onSaved={() => { setQuickAddDate(null); onReload(); }}
+            showToast={showToast}
+          />
         ) : (
           <PeriodSummary label="This Month" items={reminders} router={router} />
         )}
@@ -408,12 +473,12 @@ function MonthGrid({
 // ═══════════════════════════════════════════════════════════════════════════
 function WeekGrid({
   weekDays, todayStr, byDate, detail, setDetail, reminders, router,
+  onDayClick, quickAddDate, setQuickAddDate, accounts, userId, onReload, showToast,
 }: {
   weekDays: Date[]; todayStr: string;
   byDate: Record<string, CalendarReminder[]>;
-  detail: Detail | null; setDetail: (d: Detail | null) => void;
-  reminders: CalendarReminder[]; router: ReturnType<typeof useRouter>;
-}) {
+  onDayClick: (ds: string) => void;
+} & PanelProps) {
   const TIME_COL = "52px";
   const GRID = `${TIME_COL} repeat(7, minmax(0, 1fr))`;
 
@@ -434,7 +499,8 @@ function WeekGrid({
             return (
               <div
                 key={i}
-                className="py-2 text-center border-r border-border last:border-r-0"
+                onClick={() => onDayClick(ds)}
+                className="py-2 text-center border-r border-border last:border-r-0 cursor-pointer hover:bg-surface-hover/40 transition-colors"
               >
                 <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-widest">
                   {DAY_SHORT[i]}
@@ -521,6 +587,15 @@ function WeekGrid({
       <div className="w-60 xl:w-64 border-l border-border flex-shrink-0 overflow-y-auto p-4 bg-background">
         {detail ? (
           <ReminderDetail detail={detail} setDetail={setDetail} router={router} />
+        ) : quickAddDate ? (
+          <QuickAddPanel
+            date={quickAddDate}
+            accounts={accounts}
+            userId={userId}
+            onCancel={() => setQuickAddDate(null)}
+            onSaved={() => { setQuickAddDate(null); onReload(); }}
+            showToast={showToast}
+          />
         ) : (
           <PeriodSummary
             label="This Week"
@@ -530,6 +605,123 @@ function WeekGrid({
             router={router}
           />
         )}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// QUICK ADD PANEL
+// ═══════════════════════════════════════════════════════════════════════════
+function QuickAddPanel({
+  date, accounts, userId, onCancel, onSaved, showToast,
+}: {
+  date: string;
+  accounts: Account[];
+  userId: string;
+  onCancel: () => void;
+  onSaved: () => void;
+  showToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [accountId, setAccountId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSave() {
+    if (!accountId || !title.trim()) {
+      setError("Account and title are required");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await api.post("/reminders", {
+        account_id: accountId,
+        title: title.trim(),
+        start_date: date,
+        user_id: userId,
+      });
+      showToast("Reminder created", "success");
+      onSaved();
+    } catch {
+      setError("Failed to create reminder");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-text-primary">Quick Add</h2>
+        <button
+          onClick={onCancel}
+          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-surface-hover text-text-secondary transition-colors"
+          aria-label="Close"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Date display */}
+      <div className="flex items-center gap-1.5 mb-4 px-2 py-1.5 rounded bg-sidebar-active/10 text-sidebar-active text-xs font-medium">
+        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        {date}
+      </div>
+
+      <div className="space-y-3">
+        {/* Account */}
+        <div>
+          <label className="block text-xs font-medium text-text-secondary mb-1">Account *</label>
+          <select
+            value={accountId}
+            onChange={e => setAccountId(e.target.value)}
+            className="w-full rounded border border-border bg-surface text-text-primary px-2 py-1.5 text-xs"
+          >
+            <option value="">Select account…</option>
+            {accounts.map(a => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Title */}
+        <div>
+          <label className="block text-xs font-medium text-text-secondary mb-1">Title *</label>
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleSave()}
+            placeholder="Reminder title…"
+            className="w-full rounded border border-border bg-surface text-text-primary px-2 py-1.5 text-xs placeholder-text-secondary/50"
+          />
+        </div>
+
+        {error && (
+          <p className="text-xs text-red-500">{error}</p>
+        )}
+
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 px-3 py-1.5 rounded bg-sidebar-active text-white text-xs font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity"
+          >
+            {saving ? "Saving…" : "Add Reminder"}
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-3 py-1.5 rounded border border-border text-xs text-text-secondary hover:bg-surface-hover transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );

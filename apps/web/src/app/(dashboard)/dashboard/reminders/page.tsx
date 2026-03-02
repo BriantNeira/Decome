@@ -27,12 +27,6 @@ const RECURRENCE_OPTIONS = [
   { value: "MONTHLY", label: "Monthly" },
 ];
 
-const STATUS_NEXT: Record<string, string> = {
-  open: "in_progress",
-  in_progress: "completed",
-  completed: "open",
-  cancelled: "open",
-};
 
 function statusBadge(status: string, startDate: string) {
   const isOverdue =
@@ -228,10 +222,10 @@ function RemindersContent() {
     }
   }
 
-  async function handleStatusToggle(r: Reminder) {
-    const next = STATUS_NEXT[r.status] ?? "open";
+  async function handleMarkCompleted(r: Reminder) {
+    if (r.status === "completed") return; // already done
     try {
-      await api.patch(`/reminders/${r.id}`, { status: next });
+      await api.patch(`/reminders/${r.id}`, { status: "completed" });
       await loadReminders();
     } catch (err: any) {
       showToast(parseApiError(err, "Failed to update status"), "error");
@@ -472,9 +466,10 @@ function RemindersContent() {
                     <td className="px-4 py-3 text-text-primary max-w-[200px] truncate">{r.title}</td>
                     <td className="px-4 py-3">
                       <button
-                        onClick={() => handleStatusToggle(r)}
-                        title="Click to advance status"
-                        className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold cursor-pointer hover:opacity-80 ${statusBadge(r.status, r.start_date)}`}
+                        onClick={() => handleMarkCompleted(r)}
+                        title={r.status === "completed" ? "Already completed" : "Click to mark as completed"}
+                        disabled={r.status === "completed"}
+                        className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${r.status !== "completed" ? "cursor-pointer hover:opacity-80" : "cursor-default"} ${statusBadge(r.status, r.start_date)}`}
                       >
                         {statusLabel(r.status, r.start_date)}
                       </button>

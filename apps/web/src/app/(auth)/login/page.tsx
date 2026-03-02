@@ -68,21 +68,23 @@ export default function LoginPage() {
 
       {/* Right — form */}
       <div className="flex flex-1 flex-col items-center justify-center p-6 sm:p-10">
-        {/* Logo — visible on mobile only (desktop shows it on left panel) */}
-        <div className="lg:hidden flex flex-col items-center mb-8">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="w-full max-w-sm">
+          {/* Logo — always shown above the form */}
+          <div className="flex items-center gap-3 mb-8">
             {branding.logo_light_url ? (
-              <img src={branding.logo_light_url} alt="Logo" className="h-9 w-auto max-w-[36px] object-contain flex-shrink-0" />
+              <img
+                src={branding.logo_light_url}
+                alt="Logo"
+                className="h-10 w-auto object-contain flex-shrink-0"
+              />
             ) : (
-              <div className="w-8 h-8 rounded-lg bg-action flex items-center justify-center flex-shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-action flex items-center justify-center flex-shrink-0">
                 <span className="text-white text-sm font-bold">W</span>
               </div>
             )}
-            <span className="text-text-primary font-semibold text-lg">Deminder</span>
+            <span className="text-text-primary font-semibold text-xl">Deminder</span>
           </div>
-        </div>
 
-        <div className="w-full max-w-sm">
           <h1 className="text-2xl font-bold text-text-primary mb-1">Sign in</h1>
           <p className="text-text-secondary text-sm mb-8">Enter your credentials to access your account.</p>
 
