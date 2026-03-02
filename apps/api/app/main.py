@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -5,17 +7,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.routers import auth, branding, health, users, accounts, programs, assignments, reminder_types, custom_fields, account_notes, contacts, reminders
+from app.routers import (
+    auth, branding, health, users,
+    accounts, programs, assignments,
+    reminder_types, custom_fields,
+    account_notes, contacts, reminders,
+    email_alerts,
+)
 from app.services import branding_service
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from app.scheduler import start_scheduler, stop_scheduler
+    start_scheduler()
+    yield
+    stop_scheduler()
+
 
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -24,7 +41,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(users.router)
@@ -37,11 +53,11 @@ app.include_router(custom_fields.router)
 app.include_router(account_notes.router)
 app.include_router(contacts.router)
 app.include_router(reminders.router)
+app.include_router(email_alerts.router)
 
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon(db: AsyncSession = Depends(get_db)):
-    """Serve the active favicon at the conventional browser path."""
     config = await branding_service.get_branding(db)
     favicon_url = config.get("favicon_url")
     if not favicon_url:
