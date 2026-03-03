@@ -1,10 +1,12 @@
 import uuid
 
 from fastapi import APIRouter, Depends, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
 from app.middleware.rbac import require_roles
+from app.models.program import Program
 from app.models.user import User
 from app.schemas.program import (
     ProgramCreate,
@@ -23,6 +25,12 @@ def _client_info(request: Request) -> tuple[str | None, str | None]:
     return ip, ua
 
 
+async def _reload_program(db: AsyncSession, program_id: uuid.UUID) -> Program:
+    """Reload program after commit to avoid async lazy-load errors on relationships."""
+    result = await db.execute(select(Program).where(Program.id == program_id))
+    return result.scalar_one()
+
+
 @router.get("", response_model=ProgramListResponse)
 async def list_programs(
     skip: int = 0,
@@ -30,7 +38,7 @@ async def list_programs(
     search: str | None = None,
     account_id: uuid.UUID | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin")),
+    current_user: User = Depends(require_roles("admin", "bdm", "director")),
 ):
     programs, total = await program_service.list_programs(
         db, skip=skip, limit=limit, search=search, account_id=account_id
@@ -44,7 +52,7 @@ async def list_programs(
 async def get_program(
     program_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin")),
+    current_user: User = Depends(require_roles("admin", "bdm", "director")),
 ):
     program = await program_service.get_program(db, program_id)
     return ProgramRead.model_validate(program)
@@ -60,12 +68,15 @@ async def create_program(
     program = await program_service.create_program(
         db, name=data.name, description=data.description, account_id=data.account_id
     )
+    program_id = program.id
     ip, ua = _client_info(request)
     await audit_service.log_action(
-        db, "PROGRAM_CREATED", user_id=current_user.id, resource_type="program", resource_id=str(program.id),
+        db, "PROGRAM_CREATED", user_id=current_user.id, resource_type="program", resource_id=str(program_id),
         details={"name": program.name}, ip_address=ip, user_agent=ua
     )
     await db.commit()
+    # Reload after commit to avoid async lazy-load error on account relationship
+    program = await _reload_program(db, program_id)
     return ProgramRead.model_validate(program)
 
 
@@ -84,6 +95,8 @@ async def update_program(
         details=data.model_dump(exclude_unset=True), ip_address=ip, user_agent=ua
     )
     await db.commit()
+    # Reload after commit to avoid async lazy-load error on account relationship
+    program = await _reload_program(db, program_id)
     return ProgramRead.model_validate(program)
 
 
@@ -95,10 +108,11 @@ async def delete_program(
     current_user: User = Depends(require_roles("admin")),
 ):
     program = await program_service.delete_program(db, program_id)
+    snapshot = ProgramRead.model_validate(program)  # capture before flush/delete
     ip, ua = _client_info(request)
     await audit_service.log_action(
         db, "PROGRAM_DELETED", user_id=current_user.id, resource_type="program", resource_id=str(program_id),
         details={}, ip_address=ip, user_agent=ua
     )
     await db.commit()
-    return ProgramRead.model_validate(program)
+    return snapshot

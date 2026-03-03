@@ -53,6 +53,7 @@ export interface Program {
   description: string | null;
   is_default: boolean;
   is_active: boolean;
+  season?: string | null;
   account_id: string | null;
   account_name: string | null;
 }
@@ -110,6 +111,7 @@ export interface CustomFieldValue {
 export interface Reminder {
   id: string;
   user_id: string;
+  user_name: string | null;
   account_id: string;
   account_name: string | null;
   program_id: string | null;
@@ -123,6 +125,7 @@ export interface Reminder {
   start_date: string;
   recurrence_rule: string | null;
   edit_count: number;
+  completed_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -136,4 +139,33 @@ export interface ReminderStats {
 
 export interface CalendarReminder extends Reminder {
   occurrence_date: string;
+}
+
+export interface AccountDocument {
+  id: string;
+  account_id: string;
+  filename: string;
+  file_type: string;
+  uploaded_at: string;
+  uploaded_by_name: string | null;
+}
+
+export interface AccountKnowledge {
+  account_id: string;
+  website: string | null;
+  main_email: string | null;
+  industry: string | null;
+  account_type: string | null;
+  observations: string | null;
+  updated_at: string;
+}
+
+export interface CustomerProfile {
+  id: number;
+  account_id: string;
+  profile_text: string;
+  version: number;
+  generated_at: string;
+  tokens_used: number;
+  generated_by: string | null;
 }

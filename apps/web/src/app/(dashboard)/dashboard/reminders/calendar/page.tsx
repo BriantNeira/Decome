@@ -352,7 +352,7 @@ interface PanelProps {
 // ═══════════════════════════════════════════════════════════════════════════
 function MonthGrid({
   year, month, todayStr, byDate, detail, setDetail, reminders, router,
-  onDayClick, quickAddDate, setQuickAddDate, accounts, userId, onReload, showToast,
+  onDayClick, quickAddDate, setQuickAddDate, accounts, reminderTypes, userId, onReload, showToast,
 }: {
   year: number; month: number; todayStr: string;
   byDate: Record<string, CalendarReminder[]>;
@@ -481,7 +481,7 @@ function MonthGrid({
 // ═══════════════════════════════════════════════════════════════════════════
 function WeekGrid({
   weekDays, todayStr, byDate, detail, setDetail, reminders, router,
-  onDayClick, quickAddDate, setQuickAddDate, accounts, userId, onReload, showToast,
+  onDayClick, quickAddDate, setQuickAddDate, accounts, reminderTypes, userId, onReload, showToast,
 }: {
   weekDays: Date[]; todayStr: string;
   byDate: Record<string, CalendarReminder[]>;

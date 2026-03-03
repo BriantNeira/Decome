@@ -40,6 +40,7 @@ interface UsersListResponse {
 function ProgramsContent() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const isAdminOrDirector = user?.role === "admin" || user?.role === "director";
 
   // Active tab — default "programs" for admin, "assignments" for BDM
   // We start with "assignments" as a safe default until user loads;
@@ -49,7 +50,7 @@ function ProgramsContent() {
 
   useEffect(() => {
     if (user && !tabInitialized) {
-      setActiveTab(user.role === "admin" ? "programs" : "assignments");
+      setActiveTab(user.role === "admin" || user.role === "director" ? "programs" : "assignments");
       setTabInitialized(true);
     }
   }, [user, tabInitialized]);
@@ -60,13 +61,13 @@ function ProgramsContent() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [formData, setFormData] = useState({ name: "", description: "", account_id: "" });
+  const [formData, setFormData] = useState({ name: "", description: "", account_id: "", season: "" });
   const [accountSearch, setAccountSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState({ name: "", description: "", account_id: "" });
+  const [editData, setEditData] = useState({ name: "", description: "", account_id: "", season: "" });
   const [editAccountSearch, setEditAccountSearch] = useState("");
   const [editAccountSelected, setEditAccountSelected] = useState(false);
 
@@ -84,7 +85,7 @@ function ProgramsContent() {
   // ── Boot — wait for user to be available ─────────────────────────────
   useEffect(() => {
     if (!user) return; // auth not ready yet
-    if (user.role === "admin") {
+    if (isAdminOrDirector) {
       loadPrograms();
       loadAccounts();
     } else {
@@ -95,7 +96,7 @@ function ProgramsContent() {
 
   // Load assignments lazily when admin switches to assignments tab
   useEffect(() => {
-    if (activeTab === "assignments" && user?.role === "admin" && !assignmentsLoaded) {
+    if (activeTab === "assignments" && isAdminOrDirector && !assignmentsLoaded) {
       loadAssignments();
     }
   }, [activeTab, user?.role, assignmentsLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -127,7 +128,7 @@ function ProgramsContent() {
     setAssignmentsLoading(true);
     try {
       const role = user?.role;
-      if (role === "admin") {
+      if (role === "admin" || role === "director") {
         const [assignRes, userRes] = await Promise.all([
           api.get<AssignmentsListResponse>("/assignments?limit=500"),
           api.get<UsersListResponse>("/users?role=bdm&limit=200"),
@@ -155,11 +156,11 @@ function ProgramsContent() {
     }
     setSubmitting(true);
     try {
-      const payload: any = { name: formData.name, description: formData.description || null };
+      const payload: any = { name: formData.name, description: formData.description || null, season: formData.season || null };
       if (formData.account_id) payload.account_id = formData.account_id;
       await api.post("/programs", payload);
       showToast("Program created", "success");
-      setFormData({ name: "", description: "", account_id: "" });
+      setFormData({ name: "", description: "", account_id: "", season: "" });
       setAccountSearch("");
       setShowAdd(false);
       await loadPrograms();
@@ -176,6 +177,7 @@ function ProgramsContent() {
       name: program.name,
       description: program.description || "",
       account_id: program.account_id ?? "",
+      season: program.season ?? "",
     });
     const acctName = program.account_name ?? "";
     setEditAccountSearch(acctName);
@@ -189,6 +191,7 @@ function ProgramsContent() {
         name: editData.name,
         description: editData.description || null,
         account_id: editData.account_id || null,
+        season: editData.season || null,
       };
       await api.patch(`/programs/${programId}`, payload);
       showToast("Program updated", "success");
@@ -234,7 +237,7 @@ function ProgramsContent() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-semibold text-text-primary">Programs</h1>
-          {isAdmin && activeTab === "programs" && (
+          {isAdminOrDirector && activeTab === "programs" && (
             <span className="text-sm text-text-secondary">Total: {total}</span>
           )}
           {activeTab === "assignments" && (
@@ -252,7 +255,7 @@ function ProgramsContent() {
 
       {/* Tabs */}
       <div className="flex border-b border-border">
-        {isAdmin && (
+        {isAdminOrDirector && (
           <button
             onClick={() => setActiveTab("programs")}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
@@ -277,7 +280,7 @@ function ProgramsContent() {
       </div>
 
       {/* ── PROGRAMS TAB ──────────────────────────────────────────────── */}
-      {activeTab === "programs" && isAdmin && (
+      {activeTab === "programs" && isAdminOrDirector && (
         <>
           {showAdd && (
             <Card padding="md">
@@ -298,6 +301,12 @@ function ProgramsContent() {
                     placeholder="Optional description"
                   />
                 </div>
+                <Input
+                  label="Season"
+                  value={formData.season}
+                  onChange={(e) => setFormData({ ...formData, season: e.target.value })}
+                  placeholder="e.g. 2025, Summer 2025"
+                />
                 <div>
                   <label className="block text-sm font-medium text-text-primary mb-1">Account</label>
                   <Input
@@ -366,13 +375,16 @@ function ProgramsContent() {
                     <tr className="border-b border-border">
                       <th className="text-left py-3 px-4 font-medium text-text-secondary">Name</th>
                       <th className="text-left py-3 px-4 font-medium text-text-secondary">Account</th>
-                      <th className="text-left py-3 px-4 font-medium text-text-secondary">Actions</th>
+                      <th className="text-left py-3 px-4 font-medium text-text-secondary">Season</th>
+                      {isAdmin && (
+                        <th className="text-left py-3 px-4 font-medium text-text-secondary">Actions</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
                     {programs.map((program) => (
                       <tr key={program.id} className="border-b border-border hover:bg-bg">
-                        {editingId === program.id ? (
+                        {isAdmin && editingId === program.id ? (
                           <>
                             <td className="py-3 px-4">
                               <Input
@@ -426,6 +438,14 @@ function ProgramsContent() {
                               </div>
                             </td>
                             <td className="py-3 px-4">
+                              <input
+                                value={editData.season}
+                                onChange={(e) => setEditData({ ...editData, season: e.target.value })}
+                                placeholder="Season"
+                                className="w-full rounded border border-border bg-surface text-text-primary px-2 py-1 text-sm"
+                              />
+                            </td>
+                            <td className="py-3 px-4">
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => handleSaveEdit(program.id)}
@@ -443,15 +463,15 @@ function ProgramsContent() {
                               </div>
                             </td>
                           </>
-                        ) : deletingId === program.id ? (
+                        ) : isAdmin && deletingId === program.id ? (
                           <>
-                            <td colSpan={3} className="py-4 px-4">
+                            <td colSpan={4} className="py-4 px-4">
                               <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-2">
                                 <p className="text-sm font-semibold text-red-700">
                                   Delete &ldquo;{program.name}&rdquo;?
                                 </p>
                                 <p className="text-xs text-red-600">
-                                  ⚠️ All BDM / Account / Program assignments linked to this program will also be
+                                  All BDM / Account / Program assignments linked to this program will also be
                                   permanently deleted. This action cannot be undone.
                                 </p>
                                 <div className="flex gap-2 pt-1">
@@ -476,22 +496,25 @@ function ProgramsContent() {
                           <>
                             <td className="py-3 px-4 font-medium">{program.name}</td>
                             <td className="py-3 px-4 text-text-secondary">{program.account_name ?? "—"}</td>
-                            <td className="py-3 px-4">
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => startEdit(program)}
-                                  className="text-sm text-brand hover:underline font-medium"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => setDeletingId(program.id)}
-                                  className="text-sm text-red-500 hover:underline font-medium"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </td>
+                            <td className="py-3 px-4 text-text-secondary">{program.season ?? "—"}</td>
+                            {isAdmin && (
+                              <td className="py-3 px-4">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => startEdit(program)}
+                                    className="text-sm text-brand hover:underline font-medium"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingId(program.id)}
+                                    className="text-sm text-red-500 hover:underline font-medium"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            )}
                           </>
                         )}
                       </tr>
@@ -507,8 +530,8 @@ function ProgramsContent() {
       {/* ── ASSIGNMENTS TAB ────────────────────────────────────────────── */}
       {activeTab === "assignments" && (
         <>
-          {/* Info banner — read-only notice for admin */}
-          {isAdmin && (
+          {/* Info banner — read-only notice for admin/director */}
+          {isAdminOrDirector && (
             <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-800">
               <span>Read-only view. To create, edit or delete assignments use the Assignments page.</span>
               <Link
@@ -525,7 +548,7 @@ function ProgramsContent() {
           ) : assignments.length === 0 ? (
             <Card padding="md">
               <p className="text-center text-text-secondary">No assignments found.</p>
-              {isAdmin && (
+              {isAdminOrDirector && (
                 <div className="text-center mt-2">
                   <Link
                     href="/dashboard/admin/assignments"
@@ -542,7 +565,7 @@ function ProgramsContent() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border">
-                      {isAdmin && (
+                      {isAdminOrDirector && (
                         <th className="text-left py-3 px-4 font-medium text-text-secondary">BDM</th>
                       )}
                       <th className="text-left py-3 px-4 font-medium text-text-secondary">Account</th>
@@ -553,7 +576,7 @@ function ProgramsContent() {
                   <tbody>
                     {assignments.map((a) => (
                       <tr key={a.id} className="border-b border-border hover:bg-bg">
-                        {isAdmin && (
+                        {isAdminOrDirector && (
                           <td className="py-3 px-4 text-text-primary">{getBdmName(a.user_id)}</td>
                         )}
                         <td className="py-3 px-4 font-medium">{a.account_name ?? "—"}</td>
@@ -586,7 +609,7 @@ function ProgramsContent() {
 
 export default function ProgramsPage() {
   return (
-    <RoleGuard allowedRoles={["admin", "bdm"]} fallback={<p className="text-red-600">Access denied</p>}>
+    <RoleGuard allowedRoles={["admin", "bdm", "director"]} fallback={<p className="text-red-600">Access denied</p>}>
       <ProgramsContent />
     </RoleGuard>
   );

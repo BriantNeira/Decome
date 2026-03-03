@@ -100,3 +100,16 @@ async def list_alert_logs(
         items=[EmailAlertLogRead.from_orm_with_title(log) for log in logs],
         total=total,
     )
+
+
+@router.post("/logs/{log_id}/retry", response_model=EmailAlertLogRead)
+async def retry_alert_log(
+    log_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles("admin")),
+):
+    """Retry a specific failed alert log — bypasses the 'already sent' deduplication."""
+    new_log = await alert_service.retry_alert_log(db, log_id)
+    await db.commit()
+    await db.refresh(new_log)
+    return EmailAlertLogRead.from_orm_with_title(new_log)

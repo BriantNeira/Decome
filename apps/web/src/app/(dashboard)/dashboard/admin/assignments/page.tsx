@@ -169,6 +169,25 @@ function AssignmentsContent() {
   const filteredPrograms = programs;
   const editFilteredPrograms = programs;
 
+  // Duplicate detection: one program per account
+  // A program can only be assigned to one BDM in a given account
+  const existingAssignment =
+    formData.program_id && formData.account_id
+      ? assignments.find(
+          (a) => a.program_id === formData.program_id && a.account_id === formData.account_id
+        )
+      : null;
+
+  const editConflict =
+    editingId && editData.program_id && editData.account_id
+      ? assignments.find(
+          (a) =>
+            a.program_id === editData.program_id &&
+            a.account_id === editData.account_id &&
+            a.id !== editingId
+        )
+      : null;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -218,12 +237,21 @@ function AssignmentsContent() {
               </select>
             </div>
 
+            {existingAssignment && (
+              <div className="px-3 py-2 rounded border border-amber-300 bg-amber-50 text-sm text-amber-800">
+                This program is already assigned in this account to{" "}
+                <strong>{getBdmName(existingAssignment.user_id)}</strong>.
+                Assign it to a different BDM in another account.
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-text-primary mb-1">Program *</label>
               <select
                 value={formData.program_id}
                 onChange={(e) => setFormData({ ...formData, program_id: e.target.value })}
                 className={selectClass}
+                disabled={!!existingAssignment}
               >
                 <option value="">Select program…</option>
                 {filteredPrograms.map((p) => (
@@ -234,7 +262,13 @@ function AssignmentsContent() {
               </select>
             </div>
 
-            <Button onClick={handleCreate} loading={submitting} variant="primary" size="md">
+            <Button
+              onClick={handleCreate}
+              loading={submitting}
+              variant="primary"
+              size="md"
+              disabled={!!existingAssignment}
+            >
               Create Assignment
             </Button>
           </div>
@@ -319,12 +353,16 @@ function AssignmentsContent() {
                             </label>
                           </td>
                           <td className="py-3 px-4 text-right">
+                            {editConflict && (
+                              <p className="text-xs text-amber-600 mb-1">This program is already assigned to a different BDM in this account</p>
+                            )}
                             <div className="flex justify-end gap-2">
                               <Button
                                 onClick={() => handleSaveEdit(a.id)}
                                 loading={editSubmitting}
                                 variant="primary"
                                 size="sm"
+                                disabled={!!editConflict}
                               >
                                 Save
                               </Button>
@@ -413,7 +451,7 @@ function AssignmentsContent() {
 
 export default function AssignmentsPage() {
   return (
-    <RoleGuard allowedRoles={["admin"]} fallback={<p className="text-red-600">Access denied</p>}>
+    <RoleGuard allowedRoles={["admin", "director"]} fallback={<p className="text-red-600">Access denied</p>}>
       <AssignmentsContent />
     </RoleGuard>
   );

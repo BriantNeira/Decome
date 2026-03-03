@@ -12,7 +12,9 @@ from app.routers import (
     accounts, programs, assignments,
     reminder_types, custom_fields,
     account_notes, contacts, reminders,
-    email_alerts,
+    email_alerts, graph_email,
+    llm_config, templates, generate, token_budgets,
+    knowledge, imports, kpis,
 )
 from app.services import branding_service
 
@@ -54,6 +56,14 @@ app.include_router(account_notes.router)
 app.include_router(contacts.router)
 app.include_router(reminders.router)
 app.include_router(email_alerts.router)
+app.include_router(graph_email.router)
+app.include_router(llm_config.router)
+app.include_router(templates.router)
+app.include_router(generate.router)
+app.include_router(token_budgets.router)
+app.include_router(knowledge.router)
+app.include_router(imports.router)
+app.include_router(kpis.router)
 
 
 @app.get("/favicon.ico", include_in_schema=False)

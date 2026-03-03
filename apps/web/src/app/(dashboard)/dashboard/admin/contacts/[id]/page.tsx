@@ -257,33 +257,47 @@ function ContactDetailContent() {
       <Card padding="md">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            {/* Account name — breadcrumb style */}
+            {/* Account name — breadcrumb */}
             {contact.account_name && (
               <button
                 onClick={() => router.push(`/dashboard/admin/accounts/${contact.account_id}`)}
-                className="text-sm text-brand hover:underline font-medium mb-1 block"
+                className="text-xs text-brand hover:underline font-medium mb-1.5 block uppercase tracking-wide"
               >
-                {contact.account_name}
+                ← {contact.account_name}
               </button>
             )}
             {/* Contact name */}
-            <h1 className="text-2xl font-bold text-text-primary">{formatName(contact)}</h1>
-            {/* Badges */}
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              {contact.is_decision_maker && (
-                <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                  Decision Maker
-                </span>
-              )}
-              {contact.email && (
-                <a href={`mailto:${contact.email}`} className="text-sm text-text-secondary hover:text-brand transition-colors">
-                  {contact.email}
-                </a>
-              )}
-              {contact.phone && (
-                <span className="text-sm text-text-secondary">{contact.phone}</span>
-              )}
-            </div>
+            <h1 className="text-2xl font-bold text-text-primary leading-tight">{formatName(contact)}</h1>
+            {/* Decision Maker badge */}
+            {contact.is_decision_maker && (
+              <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                Decision Maker
+              </span>
+            )}
+            {/* Contact info row — email & phone with icons */}
+            {(contact.email || contact.phone) && (
+              <div className="flex items-center gap-5 flex-wrap mt-2">
+                {contact.email && (
+                  <a
+                    href={`mailto:${contact.email}`}
+                    className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-brand transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    {contact.email}
+                  </a>
+                )}
+                {contact.phone && (
+                  <span className="flex items-center gap-1.5 text-sm text-text-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    {contact.phone}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           {!editing && (
             <Button onClick={startEdit} variant="primary" size="sm">

@@ -94,18 +94,18 @@ async def create_assignment(
             status_code=status.HTTP_404_NOT_FOUND, detail="Program not found"
         )
 
-    # Check unique constraint
+    # Check unique constraint: one program per account
+    # A program can only be assigned to one BDM in a given account
     existing = await db.execute(
         select(Assignment).where(
-            Assignment.user_id == user_id,
-            Assignment.account_id == account_id,
             Assignment.program_id == program_id,
+            Assignment.account_id == account_id,
         )
     )
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Assignment already exists for this user, account, and program",
+            detail="This program is already assigned in this account. Assign it to a different BDM in another account.",
         )
 
     assignment = Assignment(user_id=user_id, account_id=account_id, program_id=program_id)
@@ -159,6 +159,21 @@ async def update_assignment(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Program not found"
             )
         assignment.program_id = program_id
+
+    # Check new (program_id, account_id) doesn't conflict with another assignment
+    # A program can only be assigned to one BDM in a given account
+    conflict_result = await db.execute(
+        select(Assignment).where(
+            Assignment.program_id == assignment.program_id,
+            Assignment.account_id == assignment.account_id,
+            Assignment.id != assignment_id,
+        )
+    )
+    if conflict_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This program is already assigned to a different BDM in this account.",
+        )
 
     await db.flush()
     return await _load_assignment(db, assignment_id)

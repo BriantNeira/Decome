@@ -31,7 +31,7 @@ async def list_assignments(
     account_id: uuid.UUID | None = None,
     program_id: uuid.UUID | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin")),
+    current_user: User = Depends(require_roles("admin", "director")),
 ):
     assignments, total = await assignment_service.list_assignments(
         db, skip=skip, limit=limit, user_id=user_id, account_id=account_id, program_id=program_id
@@ -60,7 +60,7 @@ async def list_my_assignments(
 async def get_assignment(
     assignment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin")),
+    current_user: User = Depends(require_roles("admin", "director")),
 ):
     assignment = await assignment_service.get_assignment(db, assignment_id)
     return AssignmentRead.model_validate(assignment)
@@ -71,7 +71,7 @@ async def create_assignment(
     data: AssignmentCreate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin")),
+    current_user: User = Depends(require_roles("admin", "director")),
 ):
     assignment = await assignment_service.create_assignment(
         db, user_id=data.user_id, account_id=data.account_id, program_id=data.program_id
@@ -99,7 +99,7 @@ async def update_assignment(
     data: AssignmentUpdate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin")),
+    current_user: User = Depends(require_roles("admin", "director")),
 ):
     assignment = await assignment_service.update_assignment(
         db, assignment_id, **data.model_dump(exclude_unset=True)
@@ -121,7 +121,7 @@ async def delete_assignment(
     assignment_id: uuid.UUID,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin")),
+    current_user: User = Depends(require_roles("admin", "director")),
 ):
     assignment = await assignment_service.delete_assignment(db, assignment_id)
     # Build response before commit (relationships are loaded now, expired after commit)

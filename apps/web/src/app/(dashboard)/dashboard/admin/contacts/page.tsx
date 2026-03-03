@@ -41,10 +41,10 @@ function ContactsContent() {
   // Filter
   const [filterAccountId, setFilterAccountId] = useState(searchParams.get("account_id") || "");
 
-  // Add form
-  const [showAdd, setShowAdd] = useState(false);
+  // Add form — pre-fill from URL params (?account_id=...&add=true)
+  const [showAdd, setShowAdd] = useState(searchParams.get("add") === "true");
   const [formData, setFormData] = useState({
-    account_id: "",
+    account_id: searchParams.get("account_id") || "",
     title: "",
     first_name: "",
     last_name: "",

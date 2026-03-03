@@ -1,17 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import api from "@/lib/api";
+import api, { parseApiError } from "@/lib/api";
 import { QRCodeSVG } from "qrcode.react";
 
 export default function SettingsPage() {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
+
+  // Name editing
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState(user?.full_name || "");
+  const [savingName, setSavingName] = useState(false);
+
+  async function handleSaveName() {
+    setSavingName(true);
+    try {
+      await api.patch("/users/me", { full_name: newName.trim() });
+      showToast("Name updated", "success");
+      setEditingName(false);
+      window.location.reload();
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to update name"), "error");
+    } finally {
+      setSavingName(false);
+    }
+  }
 
   // 2FA state machine: idle | setup | enabling | done
   const [twoFAState, setTwoFAState] = useState<"idle" | "setup" | "enabling">("idle");
@@ -21,6 +40,14 @@ export default function SettingsPage() {
   const [disableCode, setDisableCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [showDisable, setShowDisable] = useState(false);
+
+  const [tokenUsage, setTokenUsage] = useState<{ tokens_used_this_month: number; monthly_limit: number; remaining: number | null } | null>(null);
+
+  useEffect(() => {
+    api.get<{ tokens_used_this_month: number; monthly_limit: number; remaining: number | null }[]>("/token-budgets")
+      .then((res) => { if (res.data.length > 0) setTokenUsage(res.data[0]); })
+      .catch(() => {});
+  }, []);
 
   async function startSetup() {
     setLoading(true);
@@ -72,11 +99,40 @@ export default function SettingsPage() {
 
       {/* Profile */}
       <Card className="mb-4">
-        <h2 className="font-medium text-text-primary mb-3">Profile</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-medium text-text-primary">Profile</h2>
+          {!editingName && (
+            <button
+              onClick={() => { setNewName(user?.full_name || ""); setEditingName(true); }}
+              className="text-sm text-brand hover:underline"
+            >
+              Edit Name
+            </button>
+          )}
+        </div>
         <div className="space-y-2 text-sm">
-          <div className="flex gap-4">
-            <span className="text-text-secondary w-24">Name</span>
-            <span className="text-text-primary">{user?.full_name}</span>
+          <div className="flex gap-4 items-center">
+            <span className="text-text-secondary w-24 shrink-0">Name</span>
+            {editingName ? (
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
+                  className="flex-1 rounded border border-border bg-surface text-text-primary px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  autoFocus
+                />
+                <Button size="sm" variant="primary" loading={savingName} onClick={handleSaveName}>
+                  Save
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditingName(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <span className="text-text-primary">{user?.full_name}</span>
+            )}
           </div>
           <div className="flex gap-4">
             <span className="text-text-secondary w-24">Email</span>
@@ -168,6 +224,34 @@ export default function SettingsPage() {
                 Cancel
               </Button>
             </div>
+          </div>
+        )}
+      </Card>
+      {/* AI Token Usage */}
+      <Card className="mt-4">
+        <h2 className="font-medium text-text-primary mb-3">AI Token Usage</h2>
+        {tokenUsage === null ? (
+          <p className="text-sm text-text-secondary">Loading...</p>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-text-secondary">This month</span>
+              <span className="font-medium text-text-primary">
+                {tokenUsage.tokens_used_this_month.toLocaleString()}
+                {tokenUsage.monthly_limit > 0 ? ` / ${tokenUsage.monthly_limit.toLocaleString()} tokens` : " tokens (Unlimited)"}
+              </span>
+            </div>
+            {tokenUsage.monthly_limit > 0 && (
+              <div className="w-full h-2 bg-border rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand rounded-full"
+                  style={{ width: `${Math.min(100, (tokenUsage.tokens_used_this_month / tokenUsage.monthly_limit) * 100)}%` }}
+                />
+              </div>
+            )}
+            {tokenUsage.monthly_limit > 0 && tokenUsage.remaining !== null && (
+              <p className="text-xs text-text-secondary">{tokenUsage.remaining.toLocaleString()} tokens remaining</p>
+            )}
           </div>
         )}
       </Card>

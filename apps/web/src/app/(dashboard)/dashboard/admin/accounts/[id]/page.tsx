@@ -16,9 +16,32 @@ import {
   ContactSummary,
   CustomFieldDefinition,
   CustomFieldValue,
+  Reminder,
+  AccountDocument,
+  AccountKnowledge,
+  CustomerProfile,
 } from "@/types/masterdata";
 
-type Tab = "overview" | "logo" | "notes" | "contacts" | "custom-fields";
+type Tab = "overview" | "logo" | "notes" | "contacts" | "custom-fields" | "activity" | "knowledge";
+
+interface RemindersListResponse {
+  items: Reminder[];
+  total: number;
+}
+
+const REMINDER_STATUS_STYLES: Record<string, string> = {
+  open: "bg-blue-100 text-blue-800",
+  in_progress: "bg-yellow-100 text-yellow-800",
+  completed: "bg-green-100 text-green-800",
+  cancelled: "bg-gray-100 text-gray-600",
+};
+
+const REMINDER_STATUS_LABELS: Record<string, string> = {
+  open: "Open",
+  in_progress: "In Progress",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
 
 function AccountDetailContent() {
   const params = useParams();
@@ -50,10 +73,35 @@ function AccountDetailContent() {
   const [cfEditData, setCfEditData] = useState<Record<number, string>>({});
   const [cfSaving, setCfSaving] = useState(false);
 
+  // Activity tab — reminders for this account
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [remindersLoading, setRemindersLoading] = useState(false);
+
+  // Knowledge tab state
+  const [knowledgeDocs, setKnowledgeDocs] = useState<AccountDocument[]>([]);
+  const [knowledge, setKnowledge] = useState<AccountKnowledge | null>(null);
+  const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
+  const [profileHistory, setProfileHistory] = useState<CustomerProfile[]>([]);
+  const [knowledgeLoading, setKnowledgeLoading] = useState(false);
+  const [editingKnowledge, setEditingKnowledge] = useState(false);
+  const [knowledgeForm, setKnowledgeForm] = useState({
+    website: "", main_email: "", industry: "", account_type: "", observations: "",
+  });
+  const [knowledgeSaving, setKnowledgeSaving] = useState(false);
+  const [docUploading, setDocUploading] = useState(false);
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
+  const [buildingProfile, setBuildingProfile] = useState(false);
+  const [showProfileHistory, setShowProfileHistory] = useState(false);
+
   useEffect(() => {
     loadAccount();
     loadCustomFields();
   }, [accountId]);
+
+  useEffect(() => {
+    if (activeTab === "activity") loadReminders();
+    if (activeTab === "knowledge") loadKnowledge();
+  }, [activeTab]);
 
   async function loadAccount() {
     try {
@@ -81,6 +129,112 @@ function AccountDetailContent() {
       setCfValues(valMap);
     } catch {
       // non-critical
+    }
+  }
+
+  async function loadReminders() {
+    try {
+      setRemindersLoading(true);
+      const res = await api.get<RemindersListResponse>(
+        `/reminders?account_id=${accountId}&limit=100`
+      );
+      setReminders(res.data.items);
+    } catch {
+      // non-critical
+    } finally {
+      setRemindersLoading(false);
+    }
+  }
+
+  // Knowledge tab functions
+  async function loadKnowledge() {
+    try {
+      setKnowledgeLoading(true);
+      const [docsRes, knRes, profRes, histRes] = await Promise.allSettled([
+        api.get<AccountDocument[]>(`/accounts/${accountId}/documents`),
+        api.get<AccountKnowledge | null>(`/accounts/${accountId}/knowledge`),
+        api.get<CustomerProfile | null>(`/accounts/${accountId}/profile`),
+        api.get<CustomerProfile[]>(`/accounts/${accountId}/profile/history`),
+      ]);
+      if (docsRes.status === "fulfilled") setKnowledgeDocs(docsRes.value.data);
+      if (knRes.status === "fulfilled") {
+        setKnowledge(knRes.value.data);
+        if (knRes.value.data) {
+          setKnowledgeForm({
+            website: knRes.value.data.website ?? "",
+            main_email: knRes.value.data.main_email ?? "",
+            industry: knRes.value.data.industry ?? "",
+            account_type: knRes.value.data.account_type ?? "",
+            observations: knRes.value.data.observations ?? "",
+          });
+        }
+      }
+      if (profRes.status === "fulfilled") setCustomerProfile(profRes.value.data);
+      if (histRes.status === "fulfilled") setProfileHistory(histRes.value.data);
+    } catch {
+      // non-critical
+    } finally {
+      setKnowledgeLoading(false);
+    }
+  }
+
+  async function handleSaveKnowledge() {
+    setKnowledgeSaving(true);
+    try {
+      const payload = Object.fromEntries(
+        Object.entries(knowledgeForm).map(([k, v]) => [k, v || null])
+      );
+      const res = await api.put<AccountKnowledge>(`/accounts/${accountId}/knowledge`, payload);
+      setKnowledge(res.data);
+      setEditingKnowledge(false);
+      showToast("Knowledge updated", "success");
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to save knowledge"), "error");
+    } finally {
+      setKnowledgeSaving(false);
+    }
+  }
+
+  async function handleUploadDoc(file: File) {
+    setDocUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      await api.post(`/accounts/${accountId}/documents`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      showToast("Document uploaded", "success");
+      await loadKnowledge();
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to upload document"), "error");
+    } finally {
+      setDocUploading(false);
+    }
+  }
+
+  async function handleDeleteDoc(docId: string) {
+    setDeletingDocId(docId);
+    try {
+      await api.delete(`/accounts/${accountId}/documents/${docId}`);
+      showToast("Document deleted", "success");
+      await loadKnowledge();
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to delete document"), "error");
+    } finally {
+      setDeletingDocId(null);
+    }
+  }
+
+  async function handleBuildProfile() {
+    setBuildingProfile(true);
+    try {
+      await api.post<CustomerProfile>(`/accounts/${accountId}/profile/build`);
+      showToast("Customer profile built successfully", "success");
+      await loadKnowledge();
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to build profile"), "error");
+    } finally {
+      setBuildingProfile(false);
     }
   }
 
@@ -148,9 +302,14 @@ function AccountDetailContent() {
     setSubmittingNote(true);
     try {
       await api.post(`/accounts/${accountId}/notes`, { content: noteContent.trim() });
-      showToast("Note added", "success");
       setNoteContent("");
       await loadAccount();
+      // Suggest profile rebuild if profile exists
+      if (customerProfile) {
+        showToast("Note added — customer profile may be outdated. Rebuild it in the Knowledge tab.", "success");
+      } else {
+        showToast("Note added", "success");
+      }
     } catch (err: any) {
       showToast(parseApiError(err, "Failed to add note"), "error");
     } finally {
@@ -273,7 +432,9 @@ function AccountDetailContent() {
     { key: "logo", label: "Logo" },
     { key: "notes", label: `Notes (${account.notes.length})` },
     { key: "contacts", label: `Contacts (${account.contacts?.length ?? 0})` },
+    { key: "activity", label: "Activity" },
     { key: "custom-fields", label: "Custom Fields" },
+    { key: "knowledge", label: "Knowledge" },
   ];
 
   return (
@@ -513,12 +674,20 @@ function AccountDetailContent() {
             <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">
               Contacts ({account.contacts?.length ?? 0})
             </h2>
-            <Link
-              href={`/dashboard/admin/contacts?account_id=${accountId}`}
-              className="text-sm text-brand hover:underline font-medium"
-            >
-              Manage Contacts &rarr;
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                href={`/dashboard/admin/contacts?account_id=${accountId}&add=true`}
+                className="text-sm text-brand hover:underline font-medium"
+              >
+                + Add Contact
+              </Link>
+              <Link
+                href={`/dashboard/admin/contacts?account_id=${accountId}`}
+                className="text-sm text-text-secondary hover:underline"
+              >
+                Manage All &rarr;
+              </Link>
+            </div>
           </div>
           {!account.contacts || account.contacts.length === 0 ? (
             <p className="text-text-secondary text-sm">No contacts for this account.</p>
@@ -545,6 +714,86 @@ function AccountDetailContent() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Tab: Activity */}
+      {activeTab === "activity" && (
+        <Card padding="md">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">
+              Reminders ({reminders.length})
+            </h2>
+            <button
+              onClick={loadReminders}
+              className="text-xs text-text-secondary hover:text-text-primary transition-colors"
+            >
+              ↻ Refresh
+            </button>
+          </div>
+          {remindersLoading ? (
+            <p className="text-sm text-text-secondary">Loading activity…</p>
+          ) : reminders.length === 0 ? (
+            <p className="text-sm text-text-secondary">No reminders for this account.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2.5 px-3 font-medium text-text-secondary">Status</th>
+                    <th className="text-left py-2.5 px-3 font-medium text-text-secondary">Title</th>
+                    <th className="text-left py-2.5 px-3 font-medium text-text-secondary">BDM</th>
+                    <th className="text-left py-2.5 px-3 font-medium text-text-secondary">Program</th>
+                    <th className="text-left py-2.5 px-3 font-medium text-text-secondary">Due Date</th>
+                    <th className="text-left py-2.5 px-3 font-medium text-text-secondary">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reminders.map((r) => (
+                    <tr key={r.id} className="border-b border-border hover:bg-bg">
+                      <td className="py-2.5 px-3">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium ${
+                            REMINDER_STATUS_STYLES[r.status] ?? "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {REMINDER_STATUS_LABELS[r.status] ?? r.status}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-medium text-text-primary max-w-[200px] truncate">
+                        {r.title}
+                      </td>
+                      <td className="py-2.5 px-3 text-text-secondary text-xs">
+                        {r.user_name ?? "—"}
+                      </td>
+                      <td className="py-2.5 px-3 text-text-secondary text-xs">
+                        {r.program_name ?? "—"}
+                      </td>
+                      <td className="py-2.5 px-3 text-text-secondary text-xs whitespace-nowrap">
+                        {r.start_date}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        {r.type_name ? (
+                          <span
+                            className="inline-block px-2 py-0.5 rounded text-[10px] font-medium"
+                            style={{
+                              backgroundColor: r.type_color ? `${r.type_color}20` : undefined,
+                              color: r.type_color ?? undefined,
+                              border: r.type_color ? `1px solid ${r.type_color}40` : undefined,
+                            }}
+                          >
+                            {r.type_name}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-text-secondary">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </Card>
@@ -601,6 +850,192 @@ function AccountDetailContent() {
             </div>
           )}
         </Card>
+      )}
+
+      {/* Tab: Knowledge */}
+      {activeTab === "knowledge" && (
+        <div className="space-y-4">
+          {knowledgeLoading ? (
+            <div className="text-center py-8 text-text-secondary text-sm">Loading knowledge…</div>
+          ) : (
+            <>
+              {/* 1. Structured Fields */}
+              <Card padding="md">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Structured Fields</h2>
+                  {!editingKnowledge && (
+                    <button onClick={() => setEditingKnowledge(true)} className="text-sm text-brand hover:underline font-medium">
+                      Edit Fields
+                    </button>
+                  )}
+                </div>
+                {editingKnowledge ? (
+                  <div className="space-y-3">
+                    {[
+                      { key: "website", label: "Website", type: "text", placeholder: "https://example.com" },
+                      { key: "main_email", label: "Main Email", type: "email", placeholder: "info@example.com" },
+                      { key: "industry", label: "Industry", type: "text", placeholder: "Technology, Retail…" },
+                      { key: "account_type", label: "Account Type", type: "text", placeholder: "Enterprise, SMB…" },
+                    ].map(({ key, label, type, placeholder }) => (
+                      <div key={key}>
+                        <label className="block text-sm font-medium text-text-primary mb-1">{label}</label>
+                        <input
+                          type={type}
+                          value={(knowledgeForm as any)[key]}
+                          onChange={(e) => setKnowledgeForm({ ...knowledgeForm, [key]: e.target.value })}
+                          placeholder={placeholder}
+                          className="w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm"
+                        />
+                      </div>
+                    ))}
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-1">Observations</label>
+                      <textarea
+                        value={knowledgeForm.observations}
+                        onChange={(e) => setKnowledgeForm({ ...knowledgeForm, observations: e.target.value })}
+                        rows={3}
+                        placeholder="Additional notes about this account…"
+                        className="w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm resize-y"
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Button variant="primary" size="sm" loading={knowledgeSaving} onClick={handleSaveKnowledge}>Save</Button>
+                      <Button variant="secondary" size="sm" onClick={() => setEditingKnowledge(false)}>Cancel</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    {[
+                      { key: "website", label: "Website" },
+                      { key: "main_email", label: "Main Email" },
+                      { key: "industry", label: "Industry" },
+                      { key: "account_type", label: "Account Type" },
+                      { key: "observations", label: "Observations" },
+                    ].map(({ key, label }) => (
+                      <div key={key} className="flex gap-3">
+                        <span className="text-text-secondary min-w-[140px] font-medium">{label}:</span>
+                        <span className="text-text-primary">{(knowledge as any)?.[key] || <span className="italic text-text-secondary">—</span>}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+
+              {/* 2. Documents */}
+              <Card padding="md">
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide mb-4">
+                  Documents ({knowledgeDocs.length})
+                </h2>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-text-primary mb-1">
+                    Upload document (PDF, DOCX — max 10 MB)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.doc"
+                    disabled={docUploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) { handleUploadDoc(file); e.target.value = ""; }
+                    }}
+                    className="block text-sm text-text-secondary file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-brand/10 file:text-brand hover:file:bg-brand/20 cursor-pointer"
+                  />
+                  {docUploading && <p className="text-xs text-text-secondary mt-1">Uploading and extracting text…</p>}
+                </div>
+                {knowledgeDocs.length === 0 ? (
+                  <p className="text-sm text-text-secondary">No documents uploaded yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {knowledgeDocs.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between border border-border rounded-lg px-3 py-2.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs font-medium uppercase bg-surface border border-border rounded px-1.5 py-0.5 text-text-secondary flex-shrink-0">
+                            {doc.file_type}
+                          </span>
+                          <span className="text-sm text-text-primary truncate">{doc.filename}</span>
+                          <span className="text-xs text-text-secondary flex-shrink-0">
+                            {new Date(doc.uploaded_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {isAdmin && (
+                          deletingDocId === doc.id ? (
+                            <span className="flex items-center gap-2 text-xs flex-shrink-0">
+                              <button onClick={() => handleDeleteDoc(doc.id)} className="text-red-500 font-medium hover:underline">Confirm</button>
+                              <button onClick={() => setDeletingDocId(null)} className="text-text-secondary hover:underline">Cancel</button>
+                            </span>
+                          ) : (
+                            <button onClick={() => setDeletingDocId(doc.id)} className="text-xs text-red-500 hover:underline flex-shrink-0 ml-2">
+                              Delete
+                            </button>
+                          )
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+
+              {/* 3. Customer Profile */}
+              <Card padding="md">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">
+                    Customer Profile
+                    {customerProfile && (
+                      <span className="ml-2 text-xs font-normal text-text-secondary normal-case">
+                        v{customerProfile.version} · {new Date(customerProfile.generated_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </h2>
+                  {isAdmin && (
+                    <Button variant="primary" size="sm" loading={buildingProfile} onClick={handleBuildProfile}>
+                      {customerProfile ? "Rebuild Profile" : "Build Profile"}
+                    </Button>
+                  )}
+                </div>
+                {!customerProfile ? (
+                  <p className="text-sm text-text-secondary">
+                    No profile yet.{isAdmin && " Click \"Build Profile\" to generate one using LLM."}
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    <textarea
+                      value={customerProfile.profile_text}
+                      readOnly
+                      rows={8}
+                      className="w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm resize-y"
+                    />
+                    <p className="text-xs text-text-secondary">
+                      {customerProfile.tokens_used.toLocaleString()} tokens used
+                    </p>
+                    {/* Version history */}
+                    {profileHistory.length > 1 && (
+                      <div>
+                        <button
+                          onClick={() => setShowProfileHistory(!showProfileHistory)}
+                          className="text-xs text-brand hover:underline"
+                        >
+                          {showProfileHistory ? "Hide" : "Show"} version history ({profileHistory.length - 1} previous)
+                        </button>
+                        {showProfileHistory && (
+                          <div className="mt-2 space-y-2 max-h-64 overflow-y-auto border border-border rounded-lg p-2">
+                            {profileHistory.slice(1).map((p) => (
+                              <div key={p.id} className="border-b border-border last:border-0 pb-2 last:pb-0">
+                                <p className="text-xs font-medium text-text-secondary mb-1">
+                                  v{p.version} · {new Date(p.generated_at).toLocaleDateString()} · {p.tokens_used} tokens
+                                </p>
+                                <p className="text-xs text-text-primary line-clamp-3">{p.profile_text}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Card>
+            </>
+          )}
+        </div>
       )}
 
       <ToastComponent />

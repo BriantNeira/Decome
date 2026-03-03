@@ -7,12 +7,14 @@ from pydantic import BaseModel, model_validator
 class ProgramCreate(BaseModel):
     name: str
     description: str | None = None
+    season: str | None = None
     account_id: uuid.UUID | None = None
 
 
 class ProgramUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
+    season: str | None = None
     is_active: bool | None = None
 
 
@@ -22,6 +24,7 @@ class ProgramRead(BaseModel):
     description: str | None
     is_default: bool
     is_active: bool
+    season: str | None = None
     account_id: uuid.UUID | None = None
     account_name: str | None = None
 

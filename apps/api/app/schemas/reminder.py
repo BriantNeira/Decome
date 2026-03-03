@@ -28,6 +28,7 @@ class ReminderUpdate(BaseModel):
 class ReminderRead(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
+    user_name: str | None = None
     account_id: uuid.UUID
     account_name: str | None = None
     program_id: uuid.UUID | None = None
@@ -41,6 +42,7 @@ class ReminderRead(BaseModel):
     start_date: datetime.date
     recurrence_rule: str | None = None
     edit_count: int
+    completed_at: datetime.datetime | None = None
     created_at: datetime.datetime
     updated_at: datetime.datetime
 
@@ -49,6 +51,8 @@ class ReminderRead(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def extract_relationships(cls, obj):
+        if hasattr(obj, "user") and obj.user:
+            obj.__dict__["user_name"] = obj.user.full_name
         if hasattr(obj, "account") and obj.account:
             obj.__dict__["account_name"] = obj.account.name
         if hasattr(obj, "program") and obj.program:

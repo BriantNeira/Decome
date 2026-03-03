@@ -72,3 +72,30 @@ def encrypt_totp_secret(secret: str) -> str:
 
 def decrypt_totp_secret(encrypted: str) -> str:
     return _get_fernet().decrypt(encrypted.encode()).decode()
+
+
+# ── Generic field encryption ─────────────────────────────────────────────────
+
+def encrypt_field(value: str) -> str:
+    """Encrypt any sensitive string field (API keys, passwords, secrets)."""
+    if not value:
+        return value
+    return _get_fernet().encrypt(value.encode()).decode()
+
+
+def decrypt_field(encrypted: str) -> str:
+    """Decrypt any sensitive string field."""
+    if not encrypted:
+        return encrypted
+    return _get_fernet().decrypt(encrypted.encode()).decode()
+
+
+def is_encrypted(value: str) -> bool:
+    """Check whether a value is already Fernet-encrypted."""
+    if not value:
+        return False
+    try:
+        _get_fernet().decrypt(value.encode())
+        return True
+    except Exception:
+        return False

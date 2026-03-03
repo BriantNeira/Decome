@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/hooks/useAuth";
 import api, { parseApiError } from "@/lib/api";
 import { EmailConfig, EmailAlertLog, EmailAlertLogListResponse, AlertRunResult } from "@/types/email";
+import { GraphEmailConfig } from "@/types/ai";
 
 const ALERT_TYPE_LABELS: Record<string, string> = {
   "7_day": "7-Day",
@@ -20,9 +21,9 @@ function EmailSettingsContent() {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
 
-  const [activeTab, setActiveTab] = useState<"settings" | "logs">("settings");
+  const [activeTab, setActiveTab] = useState<"smtp" | "graph" | "logs">("smtp");
 
-  // ── Config state ──────────────────────────────────────────────────────
+  // ── SMTP Config state ─────────────────────────────────────────────────
   const [config, setConfig] = useState<EmailConfig>({
     smtp_host: "", smtp_port: 587, smtp_user: "", from_email: "",
     from_name: "Deminder", use_tls: true, is_active: false, updated_at: null,
@@ -33,14 +34,27 @@ function EmailSettingsContent() {
   const [testing, setTesting] = useState(false);
   const [running, setRunning] = useState(false);
 
+  // ── Graph Config state ────────────────────────────────────────────────
+  const [graphConfig, setGraphConfig] = useState<GraphEmailConfig>({
+    tenant_id: null, client_id: null, client_secret_set: false,
+    from_email: null, is_active: false, updated_at: null,
+  });
+  const [graphSecret, setGraphSecret] = useState("");
+  const [graphLoading, setGraphLoading] = useState(true);
+  const [graphSaving, setGraphSaving] = useState(false);
+  const [graphTesting, setGraphTesting] = useState(false);
+  const [graphTestEmail, setGraphTestEmail] = useState("");
+
   // ── Log state ─────────────────────────────────────────────────────────
   const [logs, setLogs] = useState<EmailAlertLog[]>([]);
   const [logsTotal, setLogsTotal] = useState(0);
   const [logsLoading, setLogsLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
+  const [retryingId, setRetryingId] = useState<number | null>(null);
+  const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
 
   // ── Boot ──────────────────────────────────────────────────────────────
-  useEffect(() => { loadConfig(); }, []);
+  useEffect(() => { loadConfig(); loadGraphConfig(); }, []);
   useEffect(() => {
     if (activeTab === "logs") loadLogs();
   }, [activeTab, statusFilter]);
@@ -69,6 +83,18 @@ function EmailSettingsContent() {
       showToast(parseApiError(err, "Failed to load logs"), "error");
     } finally {
       setLogsLoading(false);
+    }
+  }
+
+  async function loadGraphConfig() {
+    setGraphLoading(true);
+    try {
+      const res = await api.get<GraphEmailConfig>("/graph-email-config");
+      setGraphConfig(res.data);
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to load Graph config"), "error");
+    } finally {
+      setGraphLoading(false);
     }
   }
 
@@ -128,6 +154,54 @@ function EmailSettingsContent() {
     }
   }
 
+  async function handleRetry(logId: number) {
+    setRetryingId(logId);
+    try {
+      await api.post(`/email-config/logs/${logId}/retry`);
+      showToast("Alert retried successfully", "success");
+      await loadLogs();
+    } catch (err: any) {
+      showToast(parseApiError(err, "Retry failed"), "error");
+    } finally {
+      setRetryingId(null);
+    }
+  }
+
+  async function handleGraphSave() {
+    setGraphSaving(true);
+    try {
+      const payload: any = {
+        tenant_id: graphConfig.tenant_id || null,
+        client_id: graphConfig.client_id || null,
+        from_email: graphConfig.from_email || null,
+        is_active: graphConfig.is_active,
+      };
+      if (graphSecret) payload.client_secret = graphSecret;
+      const res = await api.patch<GraphEmailConfig>("/graph-email-config", payload);
+      setGraphConfig(res.data);
+      setGraphSecret("");
+      showToast("Microsoft Graph settings saved", "success");
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to save Graph settings"), "error");
+    } finally {
+      setGraphSaving(false);
+    }
+  }
+
+  async function handleGraphTest() {
+    setGraphTesting(true);
+    try {
+      const payload: any = {};
+      if (graphTestEmail) payload.to_email = graphTestEmail;
+      await api.post("/graph-email-config/test", payload);
+      showToast(graphTestEmail ? `Test email sent to ${graphTestEmail}` : "Test email sent", "success");
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to send Graph test email"), "error");
+    } finally {
+      setGraphTesting(false);
+    }
+  }
+
   const inputClass = "w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sidebar-active";
 
   return (
@@ -156,23 +230,27 @@ function EmailSettingsContent() {
 
       {/* Tabs */}
       <div className="flex border-b border-border">
-        {(["settings", "logs"] as const).map((tab) => (
+        {([
+          { key: "smtp" as const, label: "SMTP Settings" },
+          { key: "graph" as const, label: "Microsoft Graph" },
+          { key: "logs" as const, label: `Alert Logs (${logsTotal})` },
+        ]).map((tab) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px capitalize transition-colors ${
-              activeTab === tab
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              activeTab === tab.key
                 ? "border-action text-action"
                 : "border-transparent text-text-secondary hover:text-text-primary"
             }`}
           >
-            {tab === "logs" ? `Alert Logs (${logsTotal})` : "SMTP Settings"}
+            {tab.label}
           </button>
         ))}
       </div>
 
-      {/* ── SETTINGS TAB ───────────────────────────────────────────────── */}
-      {activeTab === "settings" && (
+      {/* ── SMTP TAB ─────────────────────────────────────────────────── */}
+      {activeTab === "smtp" && (
         <Card padding="md">
           {configLoading ? (
             <p className="text-text-secondary text-sm">Loading…</p>
@@ -296,6 +374,117 @@ function EmailSettingsContent() {
         </Card>
       )}
 
+      {/* ── GRAPH TAB ───────────────────────────────────────────────────── */}
+      {activeTab === "graph" && (
+        <Card padding="md">
+          {graphLoading ? (
+            <p className="text-text-secondary text-sm">Loading...</p>
+          ) : (
+            <div className="space-y-5 max-w-lg">
+              {/* Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-bg border border-border">
+                <div>
+                  <p className="text-sm font-medium text-text-primary">Enable Microsoft Graph</p>
+                  <p className="text-xs text-text-secondary mt-0.5">
+                    Send emails via Microsoft Graph API (Azure AD app registration required)
+                  </p>
+                </div>
+                <button
+                  onClick={() => setGraphConfig({ ...graphConfig, is_active: !graphConfig.is_active })}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${
+                    graphConfig.is_active ? "bg-action" : "bg-gray-300"
+                  }`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                    graphConfig.is_active ? "translate-x-5" : "translate-x-0"
+                  }`} />
+                </button>
+              </div>
+
+              {/* Graph fields */}
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1">Tenant ID</label>
+                <input
+                  value={graphConfig.tenant_id || ""}
+                  onChange={(e) => setGraphConfig({ ...graphConfig, tenant_id: e.target.value })}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1">Client ID</label>
+                <input
+                  value={graphConfig.client_id || ""}
+                  onChange={(e) => setGraphConfig({ ...graphConfig, client_id: e.target.value })}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1">
+                  Client Secret
+                  <span className="text-text-secondary font-normal ml-1 text-xs">(leave blank to keep current)</span>
+                </label>
+                <input
+                  type="password"
+                  value={graphSecret}
+                  onChange={(e) => setGraphSecret(e.target.value)}
+                  placeholder="••••••••"
+                  className={inputClass}
+                  autoComplete="new-password"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1">From Email</label>
+                <input
+                  value={graphConfig.from_email || ""}
+                  onChange={(e) => setGraphConfig({ ...graphConfig, from_email: e.target.value })}
+                  placeholder="noreply@yourcompany.com"
+                  className={inputClass}
+                />
+              </div>
+
+              {/* Info box */}
+              <div className="rounded-lg border border-border bg-bg p-3 text-xs text-text-secondary space-y-1">
+                <p className="font-medium text-text-primary text-sm mb-1">Priority Note</p>
+                <p>When both SMTP and Microsoft Graph are active, Microsoft Graph takes priority.</p>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-3 pt-2">
+                <Button onClick={handleGraphSave} loading={graphSaving} variant="primary">
+                  Save Settings
+                </Button>
+                <Button onClick={handleGraphTest} loading={graphTesting} variant="secondary">
+                  Test Connection
+                </Button>
+              </div>
+
+              {/* Test email input */}
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1">
+                  Test Email Recipient
+                  <span className="text-text-secondary font-normal ml-1 text-xs">(optional)</span>
+                </label>
+                <input
+                  type="email"
+                  value={graphTestEmail}
+                  onChange={(e) => setGraphTestEmail(e.target.value)}
+                  placeholder={user?.email || "recipient@example.com"}
+                  className={inputClass}
+                />
+              </div>
+
+              {graphConfig.updated_at && (
+                <p className="text-xs text-text-secondary">
+                  Last updated: {new Date(graphConfig.updated_at).toLocaleString()}
+                </p>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
+
       {/* ── LOGS TAB ────────────────────────────────────────────────────── */}
       {activeTab === "logs" && (
         <>
@@ -349,20 +538,42 @@ function EmailSettingsContent() {
                         </td>
                         <td className="py-3 px-4 text-text-secondary">{log.sent_to}</td>
                         <td className="py-3 px-4">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                              log.status === "sent"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                            title={log.error_message ?? undefined}
-                          >
-                            {log.status === "sent" ? "✓ Sent" : "✗ Failed"}
-                          </span>
-                          {log.error_message && (
-                            <span className="ml-2 text-xs text-red-500 truncate max-w-[160px] inline-block align-middle">
-                              {log.error_message}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                                log.status === "sent"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {log.status === "sent" ? "✓ Sent" : "✗ Failed"}
                             </span>
+                            {log.status === "failed" && (
+                              <button
+                                onClick={() => handleRetry(log.id)}
+                                disabled={retryingId === log.id}
+                                className="text-xs text-brand hover:underline font-medium disabled:opacity-50"
+                              >
+                                {retryingId === log.id ? "Retrying…" : "Retry"}
+                              </button>
+                            )}
+                          </div>
+                          {log.error_message && (
+                            <div className="mt-1">
+                              <button
+                                onClick={() =>
+                                  setExpandedLogId(expandedLogId === log.id ? null : log.id)
+                                }
+                                className="text-[10px] text-red-500 hover:underline"
+                              >
+                                {expandedLogId === log.id ? "Hide error ▲" : "Show error ▼"}
+                              </button>
+                              {expandedLogId === log.id && (
+                                <p className="mt-1 text-xs text-red-700 bg-red-50 rounded p-2 break-all border border-red-200">
+                                  {log.error_message}
+                                </p>
+                              )}
+                            </div>
                           )}
                         </td>
                       </tr>
