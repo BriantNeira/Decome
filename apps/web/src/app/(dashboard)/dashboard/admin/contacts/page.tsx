@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import api, { parseApiError } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import { Contact, Account, Program } from "@/types/masterdata";
 
 const TITLE_OPTIONS = ["Mr", "Mrs", "Miss", "Ms", "Dr"];
@@ -31,6 +32,8 @@ function ContactsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast, ToastComponent } = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [total, setTotal] = useState(0);
@@ -535,12 +538,14 @@ function ContactsContent() {
                               >
                                 Edit
                               </button>
-                              <button
-                                onClick={() => { setConfirmDeleteId(contact.id); setEditingId(null); }}
-                                className="text-sm text-red-500 hover:underline font-medium"
-                              >
-                                Delete
-                              </button>
+                              {isAdmin && (
+                                <button
+                                  onClick={() => { setConfirmDeleteId(contact.id); setEditingId(null); }}
+                                  className="text-sm text-red-500 hover:underline font-medium"
+                                >
+                                  Delete
+                                </button>
+                              )}
                             </div>
                           </td>
                         </>

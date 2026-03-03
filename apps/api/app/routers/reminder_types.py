@@ -26,7 +26,7 @@ async def list_reminder_types(
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin")),
+    current_user: User = Depends(require_roles("admin", "bdm", "director")),
 ):
     types, total = await reminder_type_service.list_reminder_types(db, skip=skip, limit=limit)
     return ReminderTypeListResponse(

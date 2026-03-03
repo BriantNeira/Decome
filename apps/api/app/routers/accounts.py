@@ -34,7 +34,7 @@ async def list_accounts(
     limit: int = 50,
     search: str | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "director")),
+    current_user: User = Depends(require_roles("admin", "bdm", "director")),
 ):
     accounts, total = await account_service.list_accounts(db, skip=skip, limit=limit, search=search)
     return AccountListResponse(

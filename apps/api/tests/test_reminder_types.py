@@ -19,10 +19,12 @@ async def test_list_reminder_types_admin(client: AsyncClient, admin_token: str):
 
 
 @pytest.mark.asyncio
-async def test_list_reminder_types_bdm_forbidden(client: AsyncClient, bdm_token: str):
-    """BDM cannot list reminder types"""
+async def test_list_reminder_types_bdm_allowed(client: AsyncClient, bdm_token: str):
+    """BDM can list reminder types (read-only for calendar/reminders)"""
     res = await client.get("/api/reminder-types", headers={"Authorization": f"Bearer {bdm_token}"})
-    assert res.status_code == 403
+    assert res.status_code == 200
+    data = res.json()
+    assert "items" in data
 
 
 @pytest.mark.asyncio

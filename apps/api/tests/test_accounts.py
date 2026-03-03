@@ -17,10 +17,12 @@ async def test_list_accounts_admin(client: AsyncClient, admin_token: str):
 
 
 @pytest.mark.asyncio
-async def test_list_accounts_bdm_forbidden(client: AsyncClient, bdm_token: str):
-    """BDM cannot list accounts"""
+async def test_list_accounts_bdm_allowed(client: AsyncClient, bdm_token: str):
+    """BDM can list accounts (read-only for calendar/reminders)"""
     res = await client.get("/api/accounts", headers={"Authorization": f"Bearer {bdm_token}"})
-    assert res.status_code == 403
+    assert res.status_code == 200
+    data = res.json()
+    assert "items" in data
 
 
 @pytest.mark.asyncio
