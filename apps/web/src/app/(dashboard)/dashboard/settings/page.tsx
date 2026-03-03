@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -40,6 +40,14 @@ export default function SettingsPage() {
   const [disableCode, setDisableCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [showDisable, setShowDisable] = useState(false);
+
+  const [tokenUsage, setTokenUsage] = useState<{ tokens_used_this_month: number; monthly_limit: number; remaining: number | null } | null>(null);
+
+  useEffect(() => {
+    api.get<{ tokens_used_this_month: number; monthly_limit: number; remaining: number | null }[]>("/token-budgets")
+      .then((res) => { if (res.data.length > 0) setTokenUsage(res.data[0]); })
+      .catch(() => {});
+  }, []);
 
   async function startSetup() {
     setLoading(true);
@@ -216,6 +224,34 @@ export default function SettingsPage() {
                 Cancel
               </Button>
             </div>
+          </div>
+        )}
+      </Card>
+      {/* AI Token Usage */}
+      <Card className="mt-4">
+        <h2 className="font-medium text-text-primary mb-3">AI Token Usage</h2>
+        {tokenUsage === null ? (
+          <p className="text-sm text-text-secondary">Loading...</p>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-text-secondary">This month</span>
+              <span className="font-medium text-text-primary">
+                {tokenUsage.tokens_used_this_month.toLocaleString()}
+                {tokenUsage.monthly_limit > 0 ? ` / ${tokenUsage.monthly_limit.toLocaleString()} tokens` : " tokens (Unlimited)"}
+              </span>
+            </div>
+            {tokenUsage.monthly_limit > 0 && (
+              <div className="w-full h-2 bg-border rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-brand rounded-full"
+                  style={{ width: `${Math.min(100, (tokenUsage.tokens_used_this_month / tokenUsage.monthly_limit) * 100)}%` }}
+                />
+              </div>
+            )}
+            {tokenUsage.monthly_limit > 0 && tokenUsage.remaining !== null && (
+              <p className="text-xs text-text-secondary">{tokenUsage.remaining.toLocaleString()} tokens remaining</p>
+            )}
           </div>
         )}
       </Card>

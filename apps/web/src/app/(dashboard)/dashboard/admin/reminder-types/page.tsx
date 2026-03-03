@@ -30,7 +30,7 @@ function ReminderTypesContent() {
     color: "#9AAE2F",
   });
   const [submitting, setSubmitting] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const { showToast, ToastComponent } = useToast();
 
@@ -70,7 +70,7 @@ function ReminderTypesContent() {
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(id: number) {
     setDeleting(true);
     try {
       await api.delete(`/reminder-types/${id}`);

@@ -48,8 +48,8 @@ function KpisContent() {
 
   /* ── Load filter options on mount ──────────────────── */
   useEffect(() => {
-    api.get<Account[]>("/accounts").then((r) => setAccounts(r.data)).catch(() => {});
-    api.get<UserOption[]>("/users", { params: { role: "bdm" } }).then((r) => setBdms(r.data)).catch(() => {});
+    api.get<{ items: Account[]; total: number }>("/accounts", { params: { limit: 500 } }).then((r) => setAccounts(r.data.items)).catch(() => {});
+    api.get<{ items: UserOption[]; total: number }>("/users", { params: { role: "bdm", limit: 500 } }).then((r) => setBdms(r.data.items)).catch(() => {});
   }, []);
 
   /* ── Fetch KPIs ────────────────────────────────────── */

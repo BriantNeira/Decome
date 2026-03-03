@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import api, { parseApiError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { Reminder, Account, Program, ReminderType } from "@/types/masterdata";
+import { Reminder, Account, Program, ReminderType, CustomerProfile } from "@/types/masterdata";
+import { EmailTemplate, GeneratedMessage, Tone, EmailTemplateListResponse, ImportResponse, ImportRowResult, Contact } from "@/types/ai";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All Statuses" },
@@ -115,6 +116,26 @@ function RemindersContent() {
 
   // Delete confirm
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Generate Email state
+  const [generateReminder, setGenerateReminder] = useState<Reminder | null>(null);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [genTemplateId, setGenTemplateId] = useState("");
+  const [genTone, setGenTone] = useState<Tone>("friendly");
+  const [genLoading, setGenLoading] = useState(false);
+  const [genResult, setGenResult] = useState<GeneratedMessage | null>(null);
+  const [genHistory, setGenHistory] = useState<GeneratedMessage[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
+  const [genContacts, setGenContacts] = useState<Contact[]>([]);
+  const [genContactId, setGenContactId] = useState("");
+  const [sendLoading, setSendLoading] = useState(false);
+
+  // Import modal state
+  const [showImport, setShowImport] = useState(false);
+  const [importStep, setImportStep] = useState<"upload" | "preview" | "done">("upload");
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportResponse | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
 
   useEffect(() => {
     loadReferenceData();
@@ -242,6 +263,126 @@ function RemindersContent() {
       showToast(parseApiError(err, "Failed to delete reminder"), "error");
     }
   }
+  async function loadTemplates(typeId?: number | null): Promise<EmailTemplate[]> {
+    try {
+      const res = await api.get<EmailTemplateListResponse>("/templates?limit=100&active_only=true");
+      const items = res.data.items;
+      setTemplates(items);
+      return items;
+    } catch {}
+    return [];
+  }
+
+  async function loadGeneratePanel(reminderId: string) {
+    try {
+      const res = await api.get<GeneratedMessage[]>(`/generate?reminder_id=${reminderId}`);
+      setGenHistory(res.data);
+    } catch {}
+  }
+
+  async function openGenerate(r: Reminder) {
+    setGenerateReminder(r);
+    setGenResult(null);
+    setGenHistory([]);
+    setShowHistory(false);
+    setCustomerProfile(null);
+    setGenTemplateId("");
+    setGenContacts([]);
+    setGenContactId("");
+
+    // Load templates + contacts in parallel
+    const [loadedTemplates] = await Promise.all([
+      loadTemplates(),
+      api.get<{ items: Contact[]; total: number }>(`/contacts?account_id=${r.account_id}&limit=100`)
+        .then((res) => {
+          const sorted = [...res.data.items].sort((a, b) =>
+            (b.is_decision_maker ? 1 : 0) - (a.is_decision_maker ? 1 : 0)
+          );
+          setGenContacts(sorted);
+          // Auto-select first decision-maker (or first contact)
+          if (sorted.length > 0) setGenContactId(sorted[0].id);
+        })
+        .catch(() => {}),
+    ]);
+
+    // Auto-select template by reminder type if available
+    if (r.type_id != null) {
+      const matched = loadedTemplates.find((t) => t.reminder_type_id === r.type_id);
+      if (matched) setGenTemplateId(matched.id);
+    }
+    loadGeneratePanel(r.id);
+  }
+
+  async function handleGenerate() {
+    if (generateReminder === null) return;
+    setGenLoading(true);
+    setGenResult(null);
+    try {
+      const payload: any = { reminder_id: generateReminder.id, tone: genTone };
+      if (genTemplateId) payload.template_id = genTemplateId;
+      if (genContactId) payload.contact_id = genContactId;
+      const res = await api.post<GeneratedMessage>("/generate", payload);
+      setGenResult(res.data);
+      await loadGeneratePanel(generateReminder.id);
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to generate message"), "error");
+    } finally { setGenLoading(false); }
+  }
+
+  async function handleSendEmail(msg: GeneratedMessage, recipientEmail: string) {
+    setSendLoading(true);
+    try {
+      const res = await api.post<GeneratedMessage>(`/generate/${msg.id}/send`, {
+        recipient_email: recipientEmail,
+      });
+      // Update the result / history with the sent status
+      if (genResult?.id === msg.id) setGenResult(res.data);
+      setGenHistory((prev) => prev.map((m) => (m.id === msg.id ? res.data : m)));
+      showToast(`Email sent to ${recipientEmail}`, "success");
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to send email"), "error");
+    } finally { setSendLoading(false); }
+  }
+
+  function openImport() {
+    setShowImport(true);
+    setImportStep("upload");
+    setImportFile(null);
+    setImportPreview(null);
+  }
+
+  async function handleImportPreview() {
+    if (!importFile) return;
+    setImportLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", importFile);
+      const res = await api.post<ImportResponse>("/reminders/import?dry_run=true", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setImportPreview(res.data);
+      setImportStep("preview");
+    } catch (err: any) {
+      showToast(parseApiError(err, "Failed to parse file"), "error");
+    } finally { setImportLoading(false); }
+  }
+
+  async function handleImportConfirm() {
+    if (!importFile) return;
+    setImportLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", importFile);
+      const res = await api.post<ImportResponse>("/reminders/import?dry_run=false", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setImportPreview(res.data);
+      setImportStep("done");
+      await loadReminders();
+    } catch (err: any) {
+      showToast(parseApiError(err, "Import failed"), "error");
+    } finally { setImportLoading(false); }
+  }
 
   return (
     <div className="space-y-4">
@@ -251,9 +392,16 @@ function RemindersContent() {
           <h1 className="text-xl font-semibold text-text-primary">Reminders</h1>
           <p className="text-sm text-text-secondary mt-0.5">Total: {total}</p>
         </div>
-        <Button onClick={() => openAdd()} variant="primary" size="sm">
-          + Add Reminder
-        </Button>
+        <div className="flex items-center gap-2">
+          {(isAdmin || user?.role === "bdm") && (
+            <Button onClick={openImport} variant="secondary" size="sm">
+              ⬆ Import
+            </Button>
+          )}
+          <Button onClick={() => openAdd()} variant="primary" size="sm">
+            + Add Reminder
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -493,6 +641,7 @@ function RemindersContent() {
                         </span>
                       ) : (
                         <span className="flex items-center gap-3 text-xs">
+                          <button onClick={() => openGenerate(r)} className="text-purple-600 hover:underline">✉ Generate</button>
                           <button onClick={() => openEdit(r)} className="text-brand hover:underline">Edit</button>
                           <button onClick={() => setDeletingId(r.id)} className="text-red-500 hover:underline">Delete</button>
                         </span>
@@ -506,7 +655,315 @@ function RemindersContent() {
         )}
       </Card>
 
+      {/* Generate Email Panel */}
+      {generateReminder && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50">
+          <div className="w-full max-w-2xl bg-surface rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div>
+                <h2 className="font-semibold text-text-primary">Generate Email</h2>
+                <p className="text-xs text-text-secondary mt-0.5">{generateReminder.account_name} &mdash; {generateReminder.title}</p>
+              </div>
+              <button onClick={() => setGenerateReminder(null)} className="text-text-secondary hover:text-text-primary text-xl leading-none">&times;</button>
+            </div>
+            <div className="p-5 space-y-4">
+
+              {/* Contact selector */}
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1">
+                  Recipient contact
+                  {genContacts.length === 0 && <span className="ml-1 text-xs font-normal text-text-secondary">(no contacts on this account)</span>}
+                </label>
+                {genContacts.length > 0 ? (
+                  <select
+                    value={genContactId}
+                    onChange={(e) => setGenContactId(e.target.value)}
+                    className="w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm"
+                  >
+                    <option value="">— No contact selected —</option>
+                    {genContacts.map((c) => {
+                      const name = [c.first_name, c.last_name].filter(Boolean).join(" ") || "(no name)";
+                      const label = c.email ? `${name} <${c.email}>` : name;
+                      return <option key={c.id} value={c.id}>{label}{c.is_decision_maker ? " ★" : ""}</option>;
+                    })}
+                  </select>
+                ) : (
+                  <p className="text-xs text-text-secondary">Add contacts to this account to enable recipient selection and auto-fill.</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-1">Template (optional)</label>
+                  <select value={genTemplateId} onChange={(e) => setGenTemplateId(e.target.value)} className="w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm">
+                    <option value="">No template (AI free-form)</option>
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-1">Tone</label>
+                  <select value={genTone} onChange={(e) => setGenTone(e.target.value as Tone)} className="w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm">
+                    <option value="friendly">Friendly</option>
+                    <option value="formal">Formal</option>
+                    <option value="direct">Direct</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="primary" size="sm" loading={genLoading} onClick={handleGenerate}>
+                  Generate →
+                </Button>
+                {genHistory.length > 0 && (
+                  <Button variant="secondary" size="sm" onClick={() => setShowHistory((v) => !v)}>
+                    {showHistory ? "Hide" : "Show"} History ({genHistory.length})
+                  </Button>
+                )}
+              </div>
+
+              {/* Latest generation result */}
+              {genResult && (() => {
+                const selectedContact = genContacts.find((c) => c.id === genContactId);
+                const recipientEmail = selectedContact?.email ?? genResult.sent_to_email ?? "";
+                return (
+                  <div className="rounded-lg border border-border bg-surface-hover p-4 space-y-3">
+                    <div>
+                      <p className="text-xs font-semibold text-text-secondary uppercase mb-1">Subject</p>
+                      <p className="text-sm font-medium text-text-primary">{genResult.subject}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-text-secondary uppercase mb-1">Body</p>
+                      <pre className="text-sm text-text-primary whitespace-pre-wrap font-sans">{genResult.body}</pre>
+                    </div>
+                    <div className="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-border">
+                      <p className="text-xs text-text-secondary">Tokens: {genResult.tokens_used}</p>
+                      {genResult.sent_at ? (
+                        <span className="text-xs text-green-600 font-medium">
+                          ✉ Sent to {genResult.sent_to_email} · {new Date(genResult.sent_at).toLocaleString()}
+                        </span>
+                      ) : recipientEmail ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          loading={sendLoading}
+                          onClick={() => handleSendEmail(genResult, recipientEmail)}
+                        >
+                          ✉ Send to {recipientEmail}
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-text-secondary italic">Select a contact with email to send</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* History */}
+              {showHistory && genHistory.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-text-secondary">Previous Generations</h3>
+                  {genHistory.map((msg) => (
+                    <div key={msg.id} className="rounded border border-border p-3 space-y-2 text-sm">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="font-medium text-text-primary">{msg.subject}</span>
+                        <div className="flex items-center gap-2">
+                          {msg.sent_at && (
+                            <span className="text-xs text-green-600">✉ {msg.sent_to_email}</span>
+                          )}
+                          <span className="text-xs text-text-secondary">{new Date(msg.generated_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <pre className="text-xs text-text-secondary whitespace-pre-wrap font-sans line-clamp-3">{msg.body}</pre>
+                      {!msg.sent_at && (() => {
+                        const selectedContact = genContacts.find((c) => c.id === genContactId);
+                        const recipientEmail = selectedContact?.email ?? "";
+                        return recipientEmail ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            loading={sendLoading}
+                            onClick={() => handleSendEmail(msg, recipientEmail)}
+                          >
+                            ✉ Send to {recipientEmail}
+                          </Button>
+                        ) : null;
+                      })()}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
       <ToastComponent />
+
+      {/* Import Modal */}
+      {showImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-surface rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-border">
+              <h2 className="font-semibold text-text-primary">
+                {importStep === "upload" && "Import Reminders"}
+                {importStep === "preview" && "Import Preview"}
+                {importStep === "done" && "Import Complete"}
+              </h2>
+              <button
+                onClick={() => setShowImport(false)}
+                className="text-text-secondary hover:text-text-primary text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Step 1: Upload */}
+              {importStep === "upload" && (
+                <>
+                  <p className="text-sm text-text-secondary">
+                    Upload a .xlsx file with one reminder per row. Each row must specify account, program, reminder type, title, and due date.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href="/api/reminders/import/template"
+                      download
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded border border-border text-sm text-text-primary hover:bg-surface-hover"
+                    >
+                      ⬇ Download Template
+                    </a>
+                  </div>
+                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+                    {importFile ? (
+                      <div className="space-y-2">
+                        <p className="font-medium text-text-primary text-sm">📄 {importFile.name}</p>
+                        <p className="text-xs text-text-secondary">{(importFile.size / 1024).toFixed(1)} KB</p>
+                        <button
+                          onClick={() => setImportFile(null)}
+                          className="text-xs text-red-500 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm text-text-secondary mb-3">Drag & drop your .xlsx file here</p>
+                        <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded bg-brand text-white text-sm font-medium hover:bg-brand/90">
+                          Browse files
+                          <input
+                            type="file"
+                            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) setImportFile(f);
+                            }}
+                          />
+                        </label>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="secondary" size="sm" onClick={() => setShowImport(false)}>Cancel</Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={importLoading}
+                      disabled={!importFile}
+                      onClick={handleImportPreview}
+                    >
+                      Preview →
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {/* Step 2: Preview */}
+              {importStep === "preview" && importPreview && (
+                <>
+                  <div className="flex gap-4">
+                    <span className="text-sm font-medium text-green-700 bg-green-50 px-3 py-1 rounded-full">
+                      ✓ {importPreview.valid_rows} valid
+                    </span>
+                    {importPreview.error_rows > 0 && (
+                      <span className="text-sm font-medium text-red-700 bg-red-50 px-3 py-1 rounded-full">
+                        ✗ {importPreview.error_rows} errors
+                      </span>
+                    )}
+                    <span className="text-sm text-text-secondary ml-auto">
+                      {importPreview.total_rows} total rows
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto border border-border rounded-lg max-h-72 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-surface-hover border-b border-border text-left">
+                          <th className="px-3 py-2 font-semibold text-text-secondary">Row</th>
+                          <th className="px-3 py-2 font-semibold text-text-secondary">Account</th>
+                          <th className="px-3 py-2 font-semibold text-text-secondary">Program</th>
+                          <th className="px-3 py-2 font-semibold text-text-secondary">Title</th>
+                          <th className="px-3 py-2 font-semibold text-text-secondary">Due Date</th>
+                          <th className="px-3 py-2 font-semibold text-text-secondary">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importPreview.rows.map((row) => (
+                          <tr
+                            key={row.row_num}
+                            className={`border-b border-border last:border-0 ${row.status === "ok" ? "bg-green-50/30" : "bg-red-50/50"}`}
+                          >
+                            <td className="px-3 py-2 text-text-secondary">{row.row_num}</td>
+                            <td className="px-3 py-2 text-text-primary max-w-[100px] truncate">{row.account}</td>
+                            <td className="px-3 py-2 text-text-secondary max-w-[100px] truncate">{row.program}</td>
+                            <td className="px-3 py-2 text-text-primary max-w-[150px] truncate">{row.title}</td>
+                            <td className="px-3 py-2 text-text-secondary">{row.due_date}</td>
+                            <td className="px-3 py-2">
+                              {row.status === "ok" ? (
+                                <span className="text-green-700 font-medium">✓</span>
+                              ) : (
+                                <span className="text-red-600" title={row.error_msg ?? ""}>✗ {row.error_msg}</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="secondary" size="sm" onClick={() => setImportStep("upload")}>← Back</Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={importLoading}
+                      disabled={importPreview.valid_rows === 0}
+                      onClick={handleImportConfirm}
+                    >
+                      Import {importPreview.valid_rows} Reminder{importPreview.valid_rows !== 1 ? "s" : ""} →
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {/* Step 3: Done */}
+              {importStep === "done" && importPreview && (
+                <div className="text-center py-6 space-y-3">
+                  <div className="text-4xl">✓</div>
+                  <p className="font-semibold text-text-primary text-lg">Import Complete!</p>
+                  <p className="text-sm text-green-700">{importPreview.created} reminder{importPreview.created !== 1 ? "s" : ""} created successfully</p>
+                  {importPreview.error_rows > 0 && (
+                    <p className="text-sm text-red-600">{importPreview.error_rows} row{importPreview.error_rows !== 1 ? "s" : ""} skipped due to errors</p>
+                  )}
+                  <Button variant="primary" size="sm" onClick={() => setShowImport(false)}>
+                    Close
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

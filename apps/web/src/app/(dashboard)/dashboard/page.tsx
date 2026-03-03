@@ -123,8 +123,8 @@ export default function DashboardPage() {
         <Card>
           <h2 className="font-medium text-text-primary mb-2">Platform Status</h2>
           <p className="text-sm text-text-secondary">
-            Phase 2 complete — Master Data, Assignments, Contacts, and Custom Fields are active.
-            Reminders and Calendar are live in Phase 3.
+            All phases complete — Master Data, Reminders, Calendar, Email Alerts, AI Message Generation,
+            Knowledge Base, Bulk Import, Microsoft Graph Email, and Director KPIs are live.
           </p>
         </Card>
       </div>
