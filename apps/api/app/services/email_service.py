@@ -8,6 +8,7 @@ from email.mime.text import MIMEText
 import aiosmtplib
 
 from app.models.email_config import EmailConfig
+from app.utils.security import decrypt_field
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,9 @@ async def send_alert_email(
     use_ssl = port == 465                      # direct SSL on 465
     start_tls = config.use_tls and not use_ssl  # STARTTLS on 587
 
+    # Decrypt the stored password before using with SMTP
+    raw_password = decrypt_field(config.smtp_password) if config.smtp_password else None
+
     await aiosmtplib.send(
         msg,
         hostname=config.smtp_host,
@@ -40,10 +44,51 @@ async def send_alert_email(
         use_tls=use_ssl,
         start_tls=start_tls,
         username=config.smtp_user or None,
-        password=config.smtp_password or None,
+        password=raw_password,
         timeout=15,
     )
     logger.info("Alert email sent to %s | %s", to_email, subject)
+
+
+async def send_email(
+    db,
+    *,
+    to_email: str,
+    subject: str,
+    html_body: str,
+) -> str:
+    """Unified email dispatch: tries Graph first, then SMTP fallback.
+
+    Returns the provider used: 'graph' or 'smtp'.
+    Raises HTTPException if no provider is configured/active.
+    """
+    from fastapi import HTTPException
+    from app.services import graph_email_service
+    from app.services.alert_service import get_email_config
+
+    # 1. Try Microsoft Graph if active
+    graph_config = await graph_email_service.get_graph_config(db)
+    if graph_config and graph_config.is_active:
+        try:
+            await graph_email_service.send_graph_email(
+                graph_config, to_email=to_email, subject=subject, html_body=html_body
+            )
+            return "graph"
+        except Exception as exc:
+            logger.warning("Graph email failed, falling back to SMTP: %s", exc)
+
+    # 2. Fallback to SMTP
+    smtp_config = await get_email_config(db)
+    if smtp_config and smtp_config.is_active:
+        await send_alert_email(
+            smtp_config, to_email=to_email, subject=subject, html_body=html_body
+        )
+        return "smtp"
+
+    raise HTTPException(
+        status_code=422,
+        detail="No email provider configured. Configure SMTP or Microsoft Graph in Email Settings.",
+    )
 
 
 def build_alert_email(reminder, alert_type: str) -> tuple[str, str]:

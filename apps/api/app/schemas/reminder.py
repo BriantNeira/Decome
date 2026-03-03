@@ -42,6 +42,7 @@ class ReminderRead(BaseModel):
     start_date: datetime.date
     recurrence_rule: str | None = None
     edit_count: int
+    completed_at: datetime.datetime | None = None
     created_at: datetime.datetime
     updated_at: datetime.datetime
 

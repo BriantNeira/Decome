@@ -12,6 +12,7 @@ from app.models.email_alert_log import EmailAlertLog
 from app.models.email_config import EmailConfig
 from app.models.reminder import Reminder
 from app.services import email_service
+from app.utils.security import encrypt_field
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ async def upsert_email_config(
     if smtp_user is not None:
         config.smtp_user = smtp_user
     if smtp_password is not None:
-        config.smtp_password = smtp_password
+        config.smtp_password = encrypt_field(smtp_password) if smtp_password else smtp_password
     if from_email is not None:
         config.from_email = from_email
     if from_name is not None:

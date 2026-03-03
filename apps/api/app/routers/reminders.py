@@ -1,3 +1,4 @@
+import datetime
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -139,8 +140,20 @@ async def update_reminder(
 ):
     reminder = await reminder_service.get_reminder(db, reminder_id)
     _check_ownership(reminder, current_user)
+
+    update_fields = data.model_dump(exclude_unset=True)
+
+    # Track completed_at timestamp
+    if "status" in update_fields:
+        new_status = update_fields["status"]
+        old_status = reminder.status
+        if new_status == "completed" and old_status != "completed":
+            update_fields["completed_at"] = datetime.datetime.now(datetime.timezone.utc)
+        elif new_status != "completed" and old_status == "completed":
+            update_fields["completed_at"] = None
+
     reminder = await reminder_service.update_reminder(
-        db, reminder_id, **data.model_dump(exclude_unset=True)
+        db, reminder_id, **update_fields
     )
     response = ReminderRead.model_validate(reminder)
     ip, ua = _client_info(request)

@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/Card";
 import api from "@/lib/api";
 import { ReminderStats } from "@/types/masterdata";
+import type { KpiResponse } from "@/types/ai";
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Administrator",
@@ -12,9 +14,16 @@ const ROLE_LABELS: Record<string, string> = {
   director: "Director",
 };
 
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<ReminderStats | null>(null);
+  const [kpi, setKpi] = useState<KpiResponse | null>(null);
+
+  const isKpiRole = user?.role === "admin" || user?.role === "director";
 
   useEffect(() => {
     api
@@ -22,6 +31,19 @@ export default function DashboardPage() {
       .then((res) => setStats(res.data))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!isKpiRole) return;
+    const now = new Date();
+    const from = new Date();
+    from.setMonth(from.getMonth() - 3);
+    api
+      .get<KpiResponse>("/kpis", {
+        params: { date_from: isoDate(from), date_to: isoDate(now) },
+      })
+      .then((res) => setKpi(res.data))
+      .catch(() => {});
+  }, [isKpiRole]);
 
   return (
     <div className="max-w-4xl">
@@ -63,6 +85,39 @@ export default function DashboardPage() {
           )}
         </Card>
       </div>
+
+      {/* KPI preview for admin / director */}
+      {isKpiRole && kpi && (
+        <div className="mt-6">
+          <Card>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-medium text-text-primary">KPI Snapshot (last 3 months)</h2>
+              <Link
+                href="/dashboard/kpis"
+                className="text-sm font-medium text-action hover:text-action-hover transition-colors"
+              >
+                View full KPIs &rarr;
+              </Link>
+            </div>
+            <div className="flex flex-wrap gap-6 text-sm">
+              <div>
+                <span className="text-text-secondary">Completion Rate: </span>
+                <span className="font-semibold text-green-600">{kpi.summary.completion_rate}%</span>
+              </div>
+              <div>
+                <span className="text-text-secondary">Overdue: </span>
+                <span className={"font-semibold " + (kpi.summary.overdue_pending > 0 ? "text-red-500" : "text-text-primary")}>
+                  {kpi.summary.overdue_pending}
+                </span>
+              </div>
+              <div>
+                <span className="text-text-secondary">Open: </span>
+                <span className="font-semibold text-text-primary">{kpi.summary.total_open}</span>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       <div className="mt-8">
         <Card>

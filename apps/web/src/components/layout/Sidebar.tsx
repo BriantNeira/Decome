@@ -30,6 +30,8 @@ const NAV_GROUPS = [
       { href: "/dashboard/admin/programs",        label: "Programs",       roles: ["admin", "director"] },
       { href: "/dashboard/reminders",             label: "Reminders",      roles: ["admin"] },
       { href: "/dashboard/reminders/calendar",    label: "Calendar",       roles: ["admin"] },
+      { href: "/dashboard/admin/bulk-import",    label: "Bulk Import",    roles: ["admin"] },
+      { href: "/dashboard/kpis",                 label: "KPIs & Analytics", roles: ["admin", "director"] },
     ],
   },
   {
@@ -41,6 +43,9 @@ const NAV_GROUPS = [
       { href: "/dashboard/admin/custom-fields",  label: "Custom Fields",  roles: ["admin"] },
       { href: "/dashboard/admin/branding",           label: "Branding",       roles: ["admin"] },
       { href: "/dashboard/admin/email-settings",  label: "Email Settings", roles: ["admin"] },
+      { href: "/dashboard/admin/llm-config",      label: "LLM Settings",   roles: ["admin"] },
+      { href: "/dashboard/admin/templates",       label: "Templates",      roles: ["admin", "bdm", "director"] },
+      { href: "/dashboard/admin/budgets",        label: "Token Budgets",  roles: ["admin"] },
       { href: "/dashboard/settings",              label: "My Settings",    roles: ["admin", "bdm", "director"] },
     ],
   },

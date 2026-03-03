@@ -24,6 +24,7 @@ class Program(Base):
     description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    season: Mapped[str | None] = mapped_column(String(255), nullable=True)
     account_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("accounts.id", ondelete="SET NULL"),

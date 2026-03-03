@@ -61,13 +61,13 @@ function ProgramsContent() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [formData, setFormData] = useState({ name: "", description: "", account_id: "" });
+  const [formData, setFormData] = useState({ name: "", description: "", account_id: "", season: "" });
   const [accountSearch, setAccountSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState({ name: "", description: "", account_id: "" });
+  const [editData, setEditData] = useState({ name: "", description: "", account_id: "", season: "" });
   const [editAccountSearch, setEditAccountSearch] = useState("");
   const [editAccountSelected, setEditAccountSelected] = useState(false);
 
@@ -156,11 +156,11 @@ function ProgramsContent() {
     }
     setSubmitting(true);
     try {
-      const payload: any = { name: formData.name, description: formData.description || null };
+      const payload: any = { name: formData.name, description: formData.description || null, season: formData.season || null };
       if (formData.account_id) payload.account_id = formData.account_id;
       await api.post("/programs", payload);
       showToast("Program created", "success");
-      setFormData({ name: "", description: "", account_id: "" });
+      setFormData({ name: "", description: "", account_id: "", season: "" });
       setAccountSearch("");
       setShowAdd(false);
       await loadPrograms();
@@ -177,6 +177,7 @@ function ProgramsContent() {
       name: program.name,
       description: program.description || "",
       account_id: program.account_id ?? "",
+      season: program.season ?? "",
     });
     const acctName = program.account_name ?? "";
     setEditAccountSearch(acctName);
@@ -190,6 +191,7 @@ function ProgramsContent() {
         name: editData.name,
         description: editData.description || null,
         account_id: editData.account_id || null,
+        season: editData.season || null,
       };
       await api.patch(`/programs/${programId}`, payload);
       showToast("Program updated", "success");
@@ -299,6 +301,12 @@ function ProgramsContent() {
                     placeholder="Optional description"
                   />
                 </div>
+                <Input
+                  label="Season"
+                  value={formData.season}
+                  onChange={(e) => setFormData({ ...formData, season: e.target.value })}
+                  placeholder="e.g. 2025, Summer 2025"
+                />
                 <div>
                   <label className="block text-sm font-medium text-text-primary mb-1">Account</label>
                   <Input
@@ -367,6 +375,7 @@ function ProgramsContent() {
                     <tr className="border-b border-border">
                       <th className="text-left py-3 px-4 font-medium text-text-secondary">Name</th>
                       <th className="text-left py-3 px-4 font-medium text-text-secondary">Account</th>
+                      <th className="text-left py-3 px-4 font-medium text-text-secondary">Season</th>
                       {isAdmin && (
                         <th className="text-left py-3 px-4 font-medium text-text-secondary">Actions</th>
                       )}
@@ -429,6 +438,14 @@ function ProgramsContent() {
                               </div>
                             </td>
                             <td className="py-3 px-4">
+                              <input
+                                value={editData.season}
+                                onChange={(e) => setEditData({ ...editData, season: e.target.value })}
+                                placeholder="Season"
+                                className="w-full rounded border border-border bg-surface text-text-primary px-2 py-1 text-sm"
+                              />
+                            </td>
+                            <td className="py-3 px-4">
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => handleSaveEdit(program.id)}
@@ -448,7 +465,7 @@ function ProgramsContent() {
                           </>
                         ) : isAdmin && deletingId === program.id ? (
                           <>
-                            <td colSpan={3} className="py-4 px-4">
+                            <td colSpan={4} className="py-4 px-4">
                               <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-2">
                                 <p className="text-sm font-semibold text-red-700">
                                   Delete &ldquo;{program.name}&rdquo;?
@@ -479,6 +496,7 @@ function ProgramsContent() {
                           <>
                             <td className="py-3 px-4 font-medium">{program.name}</td>
                             <td className="py-3 px-4 text-text-secondary">{program.account_name ?? "—"}</td>
+                            <td className="py-3 px-4 text-text-secondary">{program.season ?? "—"}</td>
                             {isAdmin && (
                               <td className="py-3 px-4">
                                 <div className="flex gap-2">
