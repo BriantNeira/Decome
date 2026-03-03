@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.routers.auth import require_roles
 from app.models.user import User
-from app.schemas.generated_message import GenerateRequest, GeneratedMessageRead, SendRequest
+from app.schemas.generated_message import GenerateRequest, GeneratedMessageRead, MessageUpdateRequest, SendRequest
 from app.services import generate_service
 
 router = APIRouter(prefix="/api/generate", tags=["generate"])
@@ -26,6 +26,23 @@ async def generate_email(
         contact_id=body.contact_id,
         tone=body.tone,
         user_id=current_user.id,
+    )
+    return GeneratedMessageRead.model_validate(msg)
+
+
+@router.patch("/{message_id}", response_model=GeneratedMessageRead)
+async def update_message(
+    message_id: uuid.UUID,
+    body: MessageUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles("admin", "bdm")),
+):
+    """Update subject/body of a generated message before sending."""
+    msg = await generate_service.update_generated_message(
+        db,
+        message_id=message_id,
+        subject=body.subject,
+        body=body.body,
     )
     return GeneratedMessageRead.model_validate(msg)
 

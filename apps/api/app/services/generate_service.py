@@ -267,6 +267,33 @@ def _build_client_email_html(msg: GeneratedMessage) -> str:
 </html>"""
 
 
+async def update_generated_message(
+    db: AsyncSession,
+    *,
+    message_id: uuid.UUID,
+    subject: str | None = None,
+    body: str | None = None,
+) -> GeneratedMessage:
+    """Update subject/body of a generated message (before sending)."""
+    result = await db.execute(
+        select(GeneratedMessage).where(GeneratedMessage.id == message_id)
+    )
+    msg = result.scalar_one_or_none()
+    if msg is None:
+        raise HTTPException(status_code=404, detail="Generated message not found")
+    if msg.sent_at is not None:
+        raise HTTPException(status_code=400, detail="Cannot edit a message that has already been sent")
+
+    if subject is not None:
+        msg.subject = subject
+    if body is not None:
+        msg.body = body
+
+    await db.commit()
+    await db.refresh(msg)
+    return msg
+
+
 async def list_generated(db: AsyncSession, reminder_id: uuid.UUID) -> list[GeneratedMessage]:
     result = await db.execute(
         select(GeneratedMessage)

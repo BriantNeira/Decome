@@ -723,25 +723,50 @@ function RemindersContent() {
                 )}
               </div>
 
-              {/* Latest generation result */}
+              {/* Latest generation result — editable */}
               {genResult && (() => {
                 const selectedContact = genContacts.find((c) => c.id === genContactId);
                 const recipientEmail = selectedContact?.email ?? genResult.sent_to_email ?? "";
+                const isSent = !!genResult.sent_at;
                 return (
                   <div className="rounded-lg border border-border bg-surface-hover p-4 space-y-3">
                     <div>
                       <p className="text-xs font-semibold text-text-secondary uppercase mb-1">Subject</p>
-                      <p className="text-sm font-medium text-text-primary">{genResult.subject}</p>
+                      {isSent ? (
+                        <p className="text-sm font-medium text-text-primary">{genResult.subject}</p>
+                      ) : (
+                        <input
+                          type="text"
+                          value={genResult.subject}
+                          onChange={(e) => setGenResult({ ...genResult, subject: e.target.value })}
+                          onBlur={() => {
+                            api.patch(`/generate/${genResult.id}`, { subject: genResult.subject }).catch(() => {});
+                          }}
+                          className="w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm font-medium"
+                        />
+                      )}
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-text-secondary uppercase mb-1">Body</p>
-                      <pre className="text-sm text-text-primary whitespace-pre-wrap font-sans">{genResult.body}</pre>
+                      {isSent ? (
+                        <pre className="text-sm text-text-primary whitespace-pre-wrap font-sans">{genResult.body}</pre>
+                      ) : (
+                        <textarea
+                          value={genResult.body}
+                          onChange={(e) => setGenResult({ ...genResult, body: e.target.value })}
+                          onBlur={() => {
+                            api.patch(`/generate/${genResult.id}`, { body: genResult.body }).catch(() => {});
+                          }}
+                          rows={8}
+                          className="w-full rounded border border-border bg-surface text-text-primary px-3 py-2 text-sm font-sans"
+                        />
+                      )}
                     </div>
                     <div className="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-border">
                       <p className="text-xs text-text-secondary">Tokens: {genResult.tokens_used}</p>
-                      {genResult.sent_at ? (
+                      {isSent ? (
                         <span className="text-xs text-green-600 font-medium">
-                          ✉ Sent to {genResult.sent_to_email} · {new Date(genResult.sent_at).toLocaleString()}
+                          ✉ Sent to {genResult.sent_to_email} · {new Date(genResult.sent_at!).toLocaleString()}
                         </span>
                       ) : recipientEmail ? (
                         <Button

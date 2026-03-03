@@ -12,6 +12,11 @@ class GenerateRequest(BaseModel):
     tone: Literal["formal", "friendly", "direct"] = "formal"
 
 
+class MessageUpdateRequest(BaseModel):
+    subject: str | None = None
+    body: str | None = None
+
+
 class SendRequest(BaseModel):
     recipient_email: str
 
