@@ -121,10 +121,10 @@ export interface GraphEmailConfig {
   updated_at: string | null;
 }
 
-/* ── KPI types ───────────────────────────────────────── */
+/* ── KPI types (match backend KPISummary flat response) ──── */
 
 export interface KpiByType {
-  type_id: number;
+  type_id: number | null;
   type_name: string;
   type_color: string | null;
   total: number;
@@ -144,6 +144,7 @@ export interface KpiByAccount {
 export interface KpiByBdm {
   user_id: string;
   user_name: string;
+  user_email: string;
   total: number;
   completed: number;
   overdue: number;
@@ -151,19 +152,31 @@ export interface KpiByBdm {
   tokens_used: number;
 }
 
-export interface KpiSummary {
-  total_open: number;
-  completed_on_time: number;
-  completed_late: number;
-  overdue_pending: number;
-  completion_rate: number;
+export interface KpiTokenBdm {
+  name: string;
+  tokens: number;
+  messages: number;
+}
+
+export interface KpiTokenSummary {
+  total_tokens: number;
+  by_bdm: KpiTokenBdm[];
 }
 
 export interface KpiResponse {
-  summary: KpiSummary;
+  date_from: string;
+  date_to: string;
+  completed_on_time: number;
+  completed_late: number;
+  completion_rate: number;
+  overdue_pending: number;
+  total_open: number;
+  total_completed: number;
   by_type: KpiByType[];
   by_account: KpiByAccount[];
+  by_program: { program_id: string | null; program_name: string; account_name: string; total: number; completed: number; overdue: number }[];
   by_bdm: KpiByBdm[];
+  token_summary: KpiTokenSummary;
 }
 
 export interface KpiDiagnosis {

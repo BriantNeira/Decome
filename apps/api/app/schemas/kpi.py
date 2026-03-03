@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 
 class KPITypeSummary(BaseModel):
+    type_id: int | None = None
     type_name: str
     type_color: str | None = None
     total: int
@@ -12,6 +13,7 @@ class KPITypeSummary(BaseModel):
 
 
 class KPIAccountSummary(BaseModel):
+    account_id: str
     account_name: str
     total: int
     completed: int
@@ -20,6 +22,7 @@ class KPIAccountSummary(BaseModel):
 
 
 class KPIProgramSummary(BaseModel):
+    program_id: str | None = None
     program_name: str
     account_name: str
     total: int
@@ -28,8 +31,9 @@ class KPIProgramSummary(BaseModel):
 
 
 class KPIBDMSummary(BaseModel):
-    bdm_name: str
-    bdm_email: str
+    user_id: str
+    user_name: str
+    user_email: str
     total: int
     completed: int
     overdue: int

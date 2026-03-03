@@ -108,13 +108,14 @@ async def get_kpi_summary(
 
     by_type = [
         KPITypeSummary(
+            type_id=k,
             type_name=v["name"],
             type_color=v["color"],
             total=v["total"],
             completed=v["completed"],
             overdue=v["overdue"],
         )
-        for v in type_map.values()
+        for k, v in type_map.items()
     ]
 
     # ── by_account ─────────────────────────────────────────────────────
@@ -132,13 +133,14 @@ async def get_kpi_summary(
 
     by_account = [
         KPIAccountSummary(
+            account_id=str(k),
             account_name=v["name"],
             total=v["total"],
             completed=v["completed"],
             overdue=v["overdue"],
             on_time_pct=round(v["on_time"] / v["completed"] * 100, 1) if v["completed"] else 0.0,
         )
-        for v in acct_map.values()
+        for k, v in acct_map.items()
     ]
 
     # ── by_program ─────────────────────────────────────────────────────
@@ -158,13 +160,14 @@ async def get_kpi_summary(
 
     by_program = [
         KPIProgramSummary(
+            program_id=str(k) if k else None,
             program_name=v["prog_name"],
             account_name=v["acct_name"],
             total=v["total"],
             completed=v["completed"],
             overdue=v["overdue"],
         )
-        for v in prog_map.values()
+        for k, v in prog_map.items()
     ]
 
     # ── by_bdm (including token + message counts) ──────────────────────
@@ -212,8 +215,9 @@ async def get_kpi_summary(
 
     by_bdm = [
         KPIBDMSummary(
-            bdm_name=v["name"],
-            bdm_email=v["email"],
+            user_id=str(uid),
+            user_name=v["name"],
+            user_email=v["email"],
             total=v["total"],
             completed=v["completed"],
             overdue=v["overdue"],
@@ -472,7 +476,7 @@ async def generate_ai_diagnosis(
     lines.append("By BDM:")
     for b in summary.by_bdm:
         lines.append(
-            f"  - {b.bdm_name}: {b.total} total, {b.completed} completed, "
+            f"  - {b.user_name}: {b.total} total, {b.completed} completed, "
             f"{b.overdue} overdue, {b.tokens_used} tokens, {b.messages_generated} messages"
         )
 

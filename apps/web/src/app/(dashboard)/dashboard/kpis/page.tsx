@@ -109,8 +109,6 @@ function KpisContent() {
     }
   }
 
-  const s = kpi?.summary;
-
   return (
     <div className="space-y-6">
       {/* ── Header ───────────────────────────────────── */}
@@ -182,25 +180,25 @@ function KpisContent() {
       {/* ── Summary Cards ────────────────────────────── */}
       {loading ? (
         <div className="text-center py-10 text-text-secondary text-sm">Loading KPIs...</div>
-      ) : s ? (
+      ) : kpi ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="border-l-4 border-l-green-500">
               <p className="text-sm font-medium text-text-secondary">On-Time Completions</p>
-              <p className="text-3xl font-semibold text-green-600 mt-1">{s.completed_on_time}</p>
-              <p className="text-xs text-green-500 mt-1">{s.completion_rate}% completion rate</p>
+              <p className="text-3xl font-semibold text-green-600 mt-1">{kpi.completed_on_time}</p>
+              <p className="text-xs text-green-500 mt-1">{kpi.completion_rate}% completion rate</p>
             </Card>
             <Card className="border-l-4 border-l-amber-500">
               <p className="text-sm font-medium text-text-secondary">Late Completions</p>
-              <p className="text-3xl font-semibold text-amber-600 mt-1">{s.completed_late}</p>
+              <p className="text-3xl font-semibold text-amber-600 mt-1">{kpi.completed_late}</p>
             </Card>
             <Card className="border-l-4 border-l-red-500">
               <p className="text-sm font-medium text-text-secondary">Overdue Pending</p>
-              <p className="text-3xl font-semibold text-red-600 mt-1">{s.overdue_pending}</p>
+              <p className="text-3xl font-semibold text-red-600 mt-1">{kpi.overdue_pending}</p>
             </Card>
             <Card className="border-l-4 border-l-gray-400">
               <p className="text-sm font-medium text-text-secondary">Open Reminders</p>
-              <p className="text-3xl font-semibold text-text-primary mt-1">{s.total_open}</p>
+              <p className="text-3xl font-semibold text-text-primary mt-1">{kpi.total_open}</p>
             </Card>
           </div>
 

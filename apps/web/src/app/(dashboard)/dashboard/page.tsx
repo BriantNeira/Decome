@@ -102,17 +102,17 @@ export default function DashboardPage() {
             <div className="flex flex-wrap gap-6 text-sm">
               <div>
                 <span className="text-text-secondary">Completion Rate: </span>
-                <span className="font-semibold text-green-600">{kpi.summary.completion_rate}%</span>
+                <span className="font-semibold text-green-600">{kpi.completion_rate}%</span>
               </div>
               <div>
                 <span className="text-text-secondary">Overdue: </span>
-                <span className={"font-semibold " + (kpi.summary.overdue_pending > 0 ? "text-red-500" : "text-text-primary")}>
-                  {kpi.summary.overdue_pending}
+                <span className={"font-semibold " + (kpi.overdue_pending > 0 ? "text-red-500" : "text-text-primary")}>
+                  {kpi.overdue_pending}
                 </span>
               </div>
               <div>
                 <span className="text-text-secondary">Open: </span>
-                <span className="font-semibold text-text-primary">{kpi.summary.total_open}</span>
+                <span className="font-semibold text-text-primary">{kpi.total_open}</span>
               </div>
             </div>
           </Card>
